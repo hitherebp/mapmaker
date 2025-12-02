@@ -1,70 +1,60 @@
 /* --- 1. GLOBAL RESET --- */
-* {
-    box-sizing: border-box; 
-    -webkit-tap-highlight-color: transparent; 
-}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body { 
-    margin: 0; 
-    padding: 0; 
+    margin: 0; padding: 0; 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    display: flex; /* Sidebar | Map */
+    display: flex; 
     height: 100dvh; 
     width: 100vw;
     overflow: hidden; 
 }
 
-/* --- 2. SIDEBAR (Fixed Width + Scrollable) --- */
+/* --- 2. SIDEBAR --- */
 #sidebar {
-    /* Layout */
-    flex: 0 0 250px; /* Rigid width: 250px. No growing, no shrinking. */
-    width: 250px;    /* Backup width */
+    flex: 0 0 250px; 
+    width: 250px;    
     background: #2c3e50; 
     color: white; 
     padding: 20px;
     padding-bottom: 80px; 
-    
-    /* Internal */
-    display: flex; 
-    flex-direction: column; 
-    gap: 12px; 
+    display: flex; flex-direction: column; gap: 12px; 
     z-index: 2000;
     box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-    
-    /* Scrolling */
     height: 100dvh; 
     overflow-y: auto; 
     -webkit-overflow-scrolling: touch; 
 }
 
-/* --- 3. MAP AREA (Fills the rest) --- */
+/* --- 3. MAIN CONTENT WRAPPER --- */
+#main-content {
+    flex-grow: 1;
+    position: relative;
+    height: 100%;
+    overflow: hidden; /* Clips the help panel */
+    width: 100%;
+}
+
+/* --- 4. MAP AREA --- */
 #map { 
-    flex-grow: 1; /* Take ALL remaining space */
-    min-width: 0; /* Crucial Fix: Prevents map from getting stuck at 0 width */
-    width: 100%;  /* Ensure it touches the right edge */
+    width: 100%; 
     height: 100%; 
-    position: relative; 
     background-color: #f0f0f0; 
 }
 
-/* --- 4. HELP PANEL (Floating Overlay) --- */
+/* --- 5. HELP PANEL --- */
 #help-panel {
-    position: absolute; /* FLOAT on top, do not sit inside the layout flow */
-    top: 0; 
-    right: 0; 
-    bottom: 0; 
+    position: absolute; 
+    top: 0; right: 0; bottom: 0; 
     width: 350px;
     background: white; 
     z-index: 3000;
     box-shadow: -2px 0 5px rgba(0,0,0,0.1);
     padding: 30px; 
     overflow-y: auto;
-    
-    /* Animation */
     transform: translateX(100%); 
     transition: transform 0.3s ease-in-out;
-    line-height: 1.6; 
-    color: #333;
+    line-height: 1.6; color: #333;
 }
 #help-panel.open { transform: translateX(0); }
 .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; position: absolute; top: 15px; right: 15px; color: #999;}
@@ -72,24 +62,18 @@ body {
 #help-panel h4 { margin: 20px 0 10px 0; color: #2980b9; font-size: 16px; border-left: 4px solid #2980b9; padding-left: 10px; }
 #help-panel ul { padding-left: 20px; font-size: 13px; color: #555; }
 
-/* --- 5. UI CONTROLS --- */
-.context-menu {
-    display: none; background: rgba(0,0,0,0.2); padding: 10px;
-    border-radius: 6px; margin-top: 5px; text-align: center;
-}
+/* --- 6. UI CONTROLS --- */
+.context-menu { display: none; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; margin-top: 5px; text-align: center; }
 .control-label { font-size:10px; color:#ccc; margin-bottom:4px; text-transform: uppercase; letter-spacing: 1px;}
 .control-row { display: flex; justify-content: center; gap: 5px; margin-bottom: 8px; }
 .btn-mini { width: 30px; height: 30px; padding: 0; justify-content: center; background: #34495e; font-size: 16px; border: 1px solid #555; cursor:pointer; color:white; border-radius:4px;}
 .btn-mini:hover { background: #4e6a85; }
 .btn-wide { width: 100%; font-size: 12px; padding: 8px; }
 
-/* BUTTONS */
 button { padding: 12px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 10px; transition: transform 0.1s; width: 100%; }
 button:active { transform: scale(0.98); }
 
 .btn-select { background-color: #34495e; color: white; border: 1px solid #4a6278; }
-.btn-select:hover { background-color: #415b76; }
-
 .btn-undo { background-color: #f1c40f; color: #333; }
 .btn-label { background-color: #9b59b6; color: white; }
 .btn-delete { background-color: #e74c3c; color: white; margin-top: 10px; }
@@ -98,7 +82,6 @@ button:active { transform: scale(0.98); }
 .btn-load { background-color: #3498db; color: white; }
 .btn-help { background-color: #95a5a6; color: white; margin-top: 10px; }
 
-/* ROAD COLORS */
 .btn-freeway { background-color: #7a8ea3; color: white; } 
 .btn-ramp { background-color: #aebdc9; color: #333; }     
 .btn-major { background-color: #ecf0f1; color: #333; }    

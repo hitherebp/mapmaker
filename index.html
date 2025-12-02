@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Map Maker</title>
+    <title>MapMaker</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
     
     <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
@@ -16,8 +16,8 @@
 <body>
 
 <div id="sidebar">
-    <h2 style="margin:0; color:white;">Map Maker</h2>
-    <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v60: Split Version</p>
+    <h2 style="margin:0; color:white;">MapMaker</h2>
+    <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v0.1b</p>
     
     <button class="btn-undo" onclick="undo()"><span>↩️</span> Undo</button>
     <div style="height:10px;"></div>
@@ -59,7 +59,7 @@
     
     <div class="toggle-container">
         <input type="checkbox" id="smooth-toggle" style="width:20px; height:20px;" checked>
-        <label for="smooth-toggle">Auto-Smooth</label>
+        <label for="smooth-toggle">New: Auto-Smooth</label>
     </div>
 
     <button id="btn-delete" class="btn-delete" onclick="smartDelete()"><span>🗑️</span> Delete Selected</button>
@@ -73,55 +73,41 @@
     <input type="file" id="file-input" style="display:none" onchange="loadMap(this)" accept=".geojson,.json" />
 </div>
 
-<div id="help-panel">
-    <button class="close-btn" onclick="toggleHelp()">✖</button>
-    <h2>Ghost City Manual</h2>
-    
-    <h4>1. Road Hierarchy</h4>
-    <p style="font-size:13px; color:#666; margin-bottom:10px;">Roads automatically layer themselves:</p>
-    <ul>
-        <li><strong>🛣️ Freeway:</strong> Top layer. Thick slate-blue. Use for interstates.</li>
-        <li><strong>⤴️ Ramp:</strong> Middle layer. Connects Freeways to Streets. Borders blend with Freeways.</li>
-        <li><strong>🏙️ Major Road:</strong> Arterial layer. Wide white lines.</li>
-        <li><strong>🏘️ Minor Street:</strong> Bottom layer. Thin white lines for neighborhoods.</li>
-    </ul>
+<div id="main-content">
+    <div id="help-panel">
+        <button class="close-btn" onclick="toggleHelp()">✖</button>
+        <h2>MapMaker Manual</h2>
+        <h4>1. Road Hierarchy</h4>
+        <ul>
+            <li><strong>🛣️ Freeway:</strong> Top layer. Thick slate-blue.</li>
+            <li><strong>⤴️ Ramp:</strong> Middle layer. Connects Freeways.</li>
+            <li><strong>🏙️ Major Road:</strong> Arterial layer. Wide white lines.</li>
+            <li><strong>🏘️ Minor Street:</strong> Bottom layer. Thin white lines.</li>
+        </ul>
+        <h4>2. Drawing & Smoothing</h4>
+        <ul>
+            <li><strong>Click</strong> to place points. <strong>Double-Click</strong> to finish.</li>
+            <li><strong>Auto-Smooth:</strong> Checkbox controls default curve.</li>
+            <li><strong>Manual Toggle:</strong> Use sidebar button to switch Smooth/Straight.</li>
+        </ul>
+        <h4>3. Editing</h4>
+        <ul>
+            <li><strong>Skeleton:</strong> Click road to see Red Dashed Line.</li>
+            <li><strong>Edit:</strong> Drag White Dots to reshape.</li>
+        </ul>
+        <h4>4. Labels</h4>
+        <ul>
+            <li><strong>Anchor:</strong> Place near road to lock position.</li>
+            <li><strong>Edit:</strong> Click label to Move/Rotate.</li>
+        </ul>
+    </div>
 
-    <h4>2. Drawing & Smoothing</h4>
-    <ul>
-        <li><strong>Click</strong> to place points. <strong>Double-Click</strong> to finish a line.</li>
-        <li><strong>Auto-Smooth:</strong> If checked (bottom left), new roads will curve automatically.</li>
-        <li><strong>Manual Toggle:</strong> Select any existing road, then click the <strong>"Make Smooth / Straight"</strong> button in the sidebar to change its style.</li>
-    </ul>
-
-    <h4>3. The "Skeleton" Editing System</h4>
-    <p style="font-size:13px; color:#666; margin-bottom:10px;">To keep editing fast, we separate the math from the visuals:</p>
-    <ul>
-        <li><strong>The Skin:</strong> The smooth road you see. You cannot click this directly.</li>
-        <li><strong>The Skeleton:</strong> When you click a road, you see a <span style="color:red; font-weight:bold;">Red Dashed Line</span>. This is the editable skeleton.</li>
-        <li><strong>How to Edit:</strong> Drag the <strong>White Dots</strong> on the red skeleton. The smooth skin will instantly update to follow you.</li>
-    </ul>
-
-    <h4>4. Smart Labels</h4>
-    <ul>
-        <li>Click <strong>📍 Place Label</strong> and click the map.</li>
-        <li><strong>Magnetic Anchors:</strong> If you place a label within ~50m of a road, it locks to that road. If you move the road later, the label follows automatically.</li>
-        <li><strong>Fine Tuning:</strong> Select a label to see the <strong>Move</strong> and <strong>Rotate</strong> controls in the sidebar.</li>
-    </ul>
-
-    <h4>5. Shortcuts & Cleanup</h4>
-    <ul>
-        <li><strong>Undo:</strong> Press <code style="background:#eee; padding:2px 4px; border-radius:3px;">Ctrl+Z</code> or use the top button.</li>
-        <li><strong>Smart Delete:</strong>
-            <ul style="margin-top:5px;">
-                <li>Select a <strong>Road</strong> → Deletes the whole road.</li>
-                <li>Select a <strong>Point</strong> (Red) → Deletes just that corner.</li>
-            </ul>
-        </li>
-        <li><strong>Navigation:</strong> Right-Click + Drag to tilt/rotate the camera into 3D.</li>
-    </ul>
+    <div id="map"></div>
 </div>
 
-<div id="map"></div>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/app.js"></script>
 
-<script src="js/config.js"></script> <script src="js/utils.js"></script>  <script src="js/app.js"></script>    </body>
+</body>
 </html>
