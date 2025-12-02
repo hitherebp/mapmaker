@@ -15,63 +15,63 @@
 </head>
 <body>
 
-<div id="sidebar">
-    <h2 style="margin:0; color:white;">MapMaker</h2>
-    <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v0.1b</p>
+    <div id="sidebar">
+        <h2 style="margin:0; color:white;">MapMaker</h2>
+        <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v64: Active States</p>
+        
+        <button class="btn-undo" onclick="undo()"><span>↩️</span> Undo</button>
+        <div style="height:10px;"></div>
     
-    <button class="btn-undo" onclick="undo()"><span>↩️</span> Undo</button>
-    <div style="height:10px;"></div>
-
-    <button class="btn-select" onclick="enterSelectMode()"><span>👆</span> Select / Edit</button>
-    <button class="btn-label" onclick="activateLabelTool()"><span>📍</span> Place Label</button>
-
-    <div id="road-controls" class="context-menu">
-        <div class="control-label">Road Options</div>
-        <button id="btn-curve-toggle" class="btn-mini btn-wide btn-curve" onclick="toggleLineSmoothing()">〰️ Make Smooth</button>
+        <button id="btn-select" class="btn-select" onclick="enterSelectMode()"><span>👆</span> Select / Edit</button>
+        <button id="btn-label" class="btn-label" onclick="activateLabelTool()"><span>📍</span> Place Label</button>
+    
+        <div id="road-controls" class="context-menu">
+            <div class="control-label">Road Options</div>
+            <button id="btn-curve-toggle" class="btn-mini btn-wide btn-curve" onclick="toggleLineSmoothing()">〰️ Make Smooth</button>
+        </div>
+    
+        <div id="text-controls" class="context-menu">
+            <div class="control-label">Move</div>
+            <div class="control-row">
+                <button class="btn-mini" onclick="nudgeLabel(0, -5)">⬆️</button>
+            </div>
+            <div class="control-row">
+                <button class="btn-mini" onclick="nudgeLabel(-5, 0)">⬅️</button>
+                <button class="btn-mini" onclick="nudgeLabel(0, 5)">⬇️</button>
+                <button class="btn-mini" onclick="nudgeLabel(5, 0)">➡️</button>
+            </div>
+            <div class="control-label">Rotate</div>
+            <div class="control-row">
+                <button class="btn-mini" onclick="rotateLabel(-5)">↺</button>
+                <button class="btn-mini" onclick="rotateLabel(5)">↻</button>
+            </div>
+            <div class="control-row">
+                <button class="btn-mini btn-wide" onclick="editLabelText()">✎ Edit Text</button>
+            </div>
+        </div>
+    
+        <div style="height:10px;"></div>
+        
+        <button id="tool-freeway" class="btn-freeway" onclick="startDrawing('freeway')"><span>🛣️</span> Freeway</button>
+        <button id="tool-ramp" class="btn-ramp" onclick="startDrawing('ramp')"><span>⤴️</span> Ramp</button>
+        <button id="tool-major" class="btn-major" onclick="startDrawing('major')"><span>🏙️</span> Major Road</button>
+        <button id="tool-minor" class="btn-minor" onclick="startDrawing('minor')"><span>🏘️</span> Minor Street</button>
+        
+        <div class="toggle-container">
+            <input type="checkbox" id="smooth-toggle" style="width:20px; height:20px;" checked>
+            <label for="smooth-toggle">New: Auto-Smooth</label>
+        </div>
+    
+        <button id="btn-delete" class="btn-delete" onclick="smartDelete()"><span>🗑️</span> Delete Selected</button>
+        <button class="btn-help" onclick="toggleHelp()"><span>❓</span> Open User Guide</button>
+        
+        <div id="debug-info">Points: 0</div>
+        <div style="flex-grow:1;"></div>
+    
+        <button class="btn-save" onclick="downloadMap()">💾 Save Map</button>
+        <button class="btn-load" onclick="document.getElementById('file-input').click()">📂 Load Map</button>
+        <input type="file" id="file-input" style="display:none" onchange="loadMap(this)" accept=".geojson,.json" />
     </div>
-
-    <div id="text-controls" class="context-menu">
-        <div class="control-label">Move</div>
-        <div class="control-row">
-            <button class="btn-mini" onclick="nudgeLabel(0, -5)">⬆️</button>
-        </div>
-        <div class="control-row">
-            <button class="btn-mini" onclick="nudgeLabel(-5, 0)">⬅️</button>
-            <button class="btn-mini" onclick="nudgeLabel(0, 5)">⬇️</button>
-            <button class="btn-mini" onclick="nudgeLabel(5, 0)">➡️</button>
-        </div>
-        <div class="control-label">Rotate</div>
-        <div class="control-row">
-            <button class="btn-mini" onclick="rotateLabel(-5)">↺</button>
-            <button class="btn-mini" onclick="rotateLabel(5)">↻</button>
-        </div>
-        <div class="control-row">
-            <button class="btn-mini btn-wide" onclick="editLabelText()">✎ Edit Text</button>
-        </div>
-    </div>
-
-    <div style="height:10px;"></div>
-    
-    <button class="btn-freeway" onclick="startDrawing('freeway')"><span>🛣️</span> Freeway</button>
-    <button class="btn-ramp" onclick="startDrawing('ramp')"><span>⤴️</span> Ramp</button>
-    <button class="btn-major" onclick="startDrawing('major')"><span>🏙️</span> Major Road</button>
-    <button class="btn-minor" onclick="startDrawing('minor')"><span>🏘️</span> Minor Street</button>
-    
-    <div class="toggle-container">
-        <input type="checkbox" id="smooth-toggle" style="width:20px; height:20px;" checked>
-        <label for="smooth-toggle">New: Auto-Smooth</label>
-    </div>
-
-    <button id="btn-delete" class="btn-delete" onclick="smartDelete()"><span>🗑️</span> Delete Selected</button>
-    <button class="btn-help" onclick="toggleHelp()"><span>❓</span> Open User Guide</button>
-    
-    <div id="debug-info">Points: 0</div>
-    <div style="flex-grow:1;"></div>
-
-    <button class="btn-save" onclick="downloadMap()">💾 Save Map</button>
-    <button class="btn-load" onclick="document.getElementById('file-input').click()">📂 Load Map</button>
-    <input type="file" id="file-input" style="display:none" onchange="loadMap(this)" accept=".geojson,.json" />
-</div>
 
 <div id="main-content">
     <div id="help-panel">

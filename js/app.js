@@ -1,4 +1,5 @@
 // --- GLOBAL STATE ---
+// We attach these to 'window' to ensure utils.js can see them if needed
 window.currentRoadType = 'major'; 
 window.isLabelMode = false;
 window.smoothMap = {}; 
@@ -53,10 +54,40 @@ map.on('mousemove', function(e) {
     else map.getCanvas().style.cursor = ''; 
 });
 
-// --- CORE FUNCTIONS ---
-window.enterSelectMode = function() { draw.changeMode('simple_select'); }
-window.startDrawing = function(type) { isLabelMode = false; currentRoadType = type; draw.changeMode('draw_line_string'); }
-window.activateLabelTool = function() { isLabelMode = true; draw.changeMode('draw_point'); }
+
+// --- HELPER: HIGHLIGHT BUTTONS ---
+function setActiveButton(activeId) {
+    // 1. Clear 'active-tool' from ALL buttons
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(b => b.classList.remove('active-tool'));
+
+    // 2. Add 'active-tool' to the one we just clicked
+    if (activeId) {
+        const btn = document.getElementById(activeId);
+        if (btn) btn.classList.add('active-tool');
+    }
+}
+
+// --- UPDATED CORE FUNCTIONS ---
+window.enterSelectMode = function() { 
+    draw.changeMode('simple_select'); 
+    setActiveButton('btn-select'); // Highlight Select Button
+}
+
+window.startDrawing = function(type) { 
+    isLabelMode = false; 
+    currentRoadType = type; 
+    draw.changeMode('draw_line_string'); 
+    setActiveButton('tool-' + type); // Highlight the specific road button (e.g. tool-freeway)
+}
+
+window.activateLabelTool = function() { 
+    isLabelMode = true; 
+    draw.changeMode('draw_point'); 
+    setActiveButton('btn-label'); // Highlight Label Button
+}
+
+// (Delete doesn't need a persistent state, so we don't set it active)
 
 window.toggleLineSmoothing = function() { 
     var ids = draw.getSelectedIds(); if (ids.length) { 
@@ -69,22 +100,10 @@ window.rotateLabel = function(deg) { var ids = draw.getSelectedIds(); if (ids.le
 window.window.nudgeLabel = function(dx, dy) { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); var o = f.properties.offset || [0, -1.5]; draw.setFeatureProperty(ids[0], 'offset', [o[0] + dx/10, o[1] + dy/10]); saveState(); } }
 window.editLabelText = function() { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); var n = prompt("Edit label:", f.properties.name); if(n) { draw.setFeatureProperty(ids[0], 'name', n); saveState(); } } }
 
-// --- FIXED SMART DELETE ---
 window.smartDelete = function() {
     var pts = draw.getSelectedPoints();
-    if (pts.features.length > 0) {
-        draw.trash();
-    } else {
-        var ids = draw.getSelectedIds();
-        if (ids.length > 0) {
-            draw.delete(ids);
-        } else {
-            draw.trash();
-        }
-    }
-    // FIX: Force immediate visual update and save state
-    updateVisuals();
-    saveState();
+    if (pts.features.length > 0) draw.trash();
+    else { var ids = draw.getSelectedIds(); if (ids.length > 0) draw.delete(ids); else draw.trash(); }
 }
 
 // --- UNDO/REDO ---
@@ -196,7 +215,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Delete' || e.key === 'Backspace') smartDelete(); 
 });
 
-// --- RENDERER (Made Global) ---
+// --- RENDERER (Made Global for Utils) ---
 window.updateVisuals = function() {
     var rawData = draw.getAll();
     var smoothFeatures = [];

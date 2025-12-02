@@ -125,3 +125,15 @@ button:active { transform: scale(0.98); }
 
 .toggle-container { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; margin-top: 10px; }
 #debug-info { margin-top: 10px; font-size: 11px; color: #7f8c8d; text-align: center;}
+
+
+/* ACTIVE BUTTON STATE */
+.active-tool {
+    border: 2px solid #ffffff !important; /* Bright White Border */
+    box-shadow: inset 0 3px 5px rgba(0,0,0,0.3) !important; /* Inner Shadow (Pressed look) */
+    transform: scale(0.95); /* Shrink slightly */
+    filter: brightness(1.2); /* Make it pop */
+}
+
+/* Ensure the hover effect doesn't override the active state */
+button:hover { filter: brightness(1.1); }
