@@ -1,0 +1,9 @@
+# Ignore VS Code workspace files
+*.code-workspace
+
+# Ignore the archive directory and everything in it
+archive/
+
+# Ignore system files (optional but recommended)
+.DS_Store
+Thumbs.db

@@ -1,0 +1,12 @@
+
+Now that you are live, here is the "Update Loop" you will use for the rest of the project. You never have to mess with settings again.
+
+Edit Code in VS Code.
+
+Terminal Command: git add .
+
+Terminal Command: git commit -m "Description of change"
+
+Terminal Command: git push
+
+Wait 60s, then refresh your live website.
