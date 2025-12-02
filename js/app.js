@@ -1,5 +1,4 @@
 // --- GLOBAL STATE ---
-// We attach these to 'window' to ensure utils.js can see them if needed
 window.currentRoadType = 'major'; 
 window.isLabelMode = false;
 window.smoothMap = {}; 
@@ -20,18 +19,14 @@ window.map = new maplibregl.Map({
 window.nav = new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true });
 map.addControl(nav, 'top-right');
 
-// 'drawStyles' comes from config.js
 window.draw = new MapboxDraw({ displayControlsDefault: false, userProperties: true, styles: drawStyles });
 
 // --- LOAD LAYERS ---
 map.on('load', function() {
     map.addControl(draw);
-    
     var layers = map.getStyle().layers;
     var firstDrawLayerId;
-    for (var i = 0; i < layers.length; i++) { 
-        if (layers[i].id.indexOf('gl-draw') === 0) { firstDrawLayerId = layers[i].id; break; } 
-    }
+    for (var i = 0; i < layers.length; i++) { if (layers[i].id.indexOf('gl-draw') === 0) { firstDrawLayerId = layers[i].id; break; } }
 
     map.addSource('smooth_source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
@@ -54,40 +49,38 @@ map.on('mousemove', function(e) {
     else map.getCanvas().style.cursor = ''; 
 });
 
-
-// --- HELPER: HIGHLIGHT BUTTONS ---
+// --- HELPER: SET ACTIVE BUTTON ---
 function setActiveButton(activeId) {
-    // 1. Clear 'active-tool' from ALL buttons
-    const buttons = document.querySelectorAll('button');
-    buttons.forEach(b => b.classList.remove('active-tool'));
-
-    // 2. Add 'active-tool' to the one we just clicked
-    if (activeId) {
+    // 1. Remove from all
+    document.querySelectorAll('button').forEach(b => b.classList.remove('active-tool'));
+    // 2. Add to target
+    if(activeId) {
         const btn = document.getElementById(activeId);
-        if (btn) btn.classList.add('active-tool');
+        if(btn) btn.classList.add('active-tool');
     }
 }
 
-// --- UPDATED CORE FUNCTIONS ---
+// --- CORE FUNCTIONS ---
 window.enterSelectMode = function() { 
     draw.changeMode('simple_select'); 
-    setActiveButton('btn-select'); // Highlight Select Button
+    setActiveButton('btn-select');
 }
 
 window.startDrawing = function(type) { 
     isLabelMode = false; 
     currentRoadType = type; 
     draw.changeMode('draw_line_string'); 
-    setActiveButton('tool-' + type); // Highlight the specific road button (e.g. tool-freeway)
+    setActiveButton('tool-' + type); // Requires ID in HTML like id="tool-freeway"
 }
 
 window.activateLabelTool = function() { 
     isLabelMode = true; 
     draw.changeMode('draw_point'); 
-    setActiveButton('btn-label'); // Highlight Label Button
+    setActiveButton('btn-label');
 }
 
-// (Delete doesn't need a persistent state, so we don't set it active)
+// ... Rest of functions (toggleLineSmoothing, rotateLabel, etc) remain the same ...
+// Including smartDelete, undo, saveState, etc.
 
 window.toggleLineSmoothing = function() { 
     var ids = draw.getSelectedIds(); if (ids.length) { 
@@ -97,16 +90,17 @@ window.toggleLineSmoothing = function() {
 }
 
 window.rotateLabel = function(deg) { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); draw.setFeatureProperty(ids[0], 'rotation', (f.properties.rotation || 0) + deg); saveState(); } }
-window.window.nudgeLabel = function(dx, dy) { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); var o = f.properties.offset || [0, -1.5]; draw.setFeatureProperty(ids[0], 'offset', [o[0] + dx/10, o[1] + dy/10]); saveState(); } }
+window.nudgeLabel = function(dx, dy) { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); var o = f.properties.offset || [0, -1.5]; draw.setFeatureProperty(ids[0], 'offset', [o[0] + dx/10, o[1] + dy/10]); saveState(); } }
 window.editLabelText = function() { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); var n = prompt("Edit label:", f.properties.name); if(n) { draw.setFeatureProperty(ids[0], 'name', n); saveState(); } } }
 
 window.smartDelete = function() {
     var pts = draw.getSelectedPoints();
     if (pts.features.length > 0) draw.trash();
     else { var ids = draw.getSelectedIds(); if (ids.length > 0) draw.delete(ids); else draw.trash(); }
+    updateVisuals();
+    saveState();
 }
 
-// --- UNDO/REDO ---
 window.saveState = function() {
     if (historyStep < historyStack.length - 1) historyStack = historyStack.slice(0, historyStep + 1);
     historyStack.push(JSON.stringify(draw.getAll()));
@@ -137,6 +131,10 @@ map.on('draw.selectionchange', function(e) {
 
     if (e.features.length > 0) {
         var f = e.features[0];
+        // If user selects an existing road, we should probably highlight the "Select" tool
+        // or just clear the drawing tool highlights
+        setActiveButton('btn-select'); 
+
         if (f.geometry.type === 'LineString') {
             document.getElementById('debug-info').innerText = "Points: " + f.geometry.coordinates.length;
             showTextControls(false);
@@ -150,6 +148,18 @@ map.on('draw.selectionchange', function(e) {
         showTextControls(false); showRoadControls(false); document.getElementById('debug-info').innerText = "Points: 0";
     }
 });
+
+function showTextControls(show) { document.getElementById('text-controls').style.display = show ? 'block' : 'none'; }
+function showRoadControls(show, feature) { 
+    var panel = document.getElementById('road-controls');
+    panel.style.display = show ? 'block' : 'none';
+    if (show && feature) {
+        var btn = document.getElementById('btn-curve-toggle');
+        var isSmoothed = feature.properties.isSmoothed !== false; 
+        if (isSmoothed) { btn.className = "btn-mini btn-wide btn-straight"; btn.innerHTML = "📏 Make Straight"; } 
+        else { btn.className = "btn-mini btn-wide btn-curve"; btn.innerHTML = "〰️ Make Smooth"; }
+    }
+}
 
 map.on('draw.create', function(e) {
     var f = e.features[0];
@@ -179,6 +189,8 @@ map.on('draw.create', function(e) {
             saveState();
         } else { draw.delete(f.id); }
         isLabelMode = false;
+        // Reset button state
+        setActiveButton('btn-select');
     } else if (f.geometry.type === 'LineString') {
         draw.setFeatureProperty(f.id, 'roadType', currentRoadType);
         var autoSmooth = document.getElementById('smooth-toggle').checked;
@@ -215,7 +227,6 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Delete' || e.key === 'Backspace') smartDelete(); 
 });
 
-// --- RENDERER (Made Global for Utils) ---
 window.updateVisuals = function() {
     var rawData = draw.getAll();
     var smoothFeatures = [];
@@ -248,4 +259,32 @@ window.updateVisuals = function() {
     
     var source = map.getSource('smooth_source');
     if (source) source.setData({ type: 'FeatureCollection', features: smoothFeatures });
+}
+
+function downloadMap() {
+    var data = draw.getAll();
+    if (data.features.length === 0) { alert("Map is empty!"); return; }
+    var blob = new Blob([JSON.stringify(data)], {type: "application/geo+json"});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = "mapmaker.geojson";
+    a.click();
+}
+function loadMap(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var json = JSON.parse(e.target.result);
+            draw.deleteAll(); draw.add(json);
+            updateVisuals(); 
+            saveState();
+            var bounds = new maplibregl.LngLatBounds();
+            json.features.forEach(f => { if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates); else f.geometry.coordinates.forEach(c => bounds.extend(c)); });
+            if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 });
+        } catch (error) { alert("Error: " + error); }
+    };
+    reader.readAsText(file);
+    input.value = '';
 }
