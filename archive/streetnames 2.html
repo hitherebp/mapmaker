@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Ghost City v27 (Comprehensive Guide)</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    
+    <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <script> window.mapboxgl = maplibregl; </script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css" type="text/css" />
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden;}
+        
+        #sidebar {
+            width: 250px; background: #2c3e50; color: white; padding: 20px;
+            display: flex; flex-direction: column; gap: 12px; z-index: 2000;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+        }
+
+        #help-panel {
+            position: absolute; top: 0; right: 0; bottom: 0; width: 350px; /* Wider for better reading */
+            background: white; z-index: 3000;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            padding: 30px; overflow-y: auto;
+            transform: translateX(100%); transition: transform 0.3s ease-in-out;
+            line-height: 1.6; color: #333;
+        }
+        #help-panel.open { transform: translateX(0); }
+
+        #map { flex-grow: 1; position: relative; background-color: #e5e5e5; }
+        
+        /* Help Typography */
+        h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h4 { margin: 20px 0 10px 0; color: #2c3e50; font-size: 16px; border-left: 4px solid #3498db; padding-left: 10px; }
+        ul { padding-left: 20px; font-size: 14px; color: #555; }
+        li { margin-bottom: 8px; }
+        strong { color: #000; }
+        .key { display: inline-block; padding: 2px 6px; background: #eee; border-radius: 4px; font-size: 11px; font-family: monospace; border: 1px solid #ccc; }
+
+        /* NUDGE CONTROLS */
+        #nudge-controls {
+            display: none; background: rgba(0,0,0,0.2); padding: 10px;
+            border-radius: 6px; margin-top: 5px; text-align: center;
+        }
+        .nudge-row { display: flex; justify-content: center; gap: 5px; margin-bottom: 5px; }
+        .btn-nudge { 
+            width: 30px; height: 30px; padding: 0; 
+            justify-content: center; background: #34495e; 
+            font-size: 16px; border: 1px solid #555;
+        }
+        .btn-nudge:hover { background: #4e6a85; }
+
+        /* BUTTONS */
+        button {
+            padding: 12px; border: none; border-radius: 6px; font-size: 14px;
+            cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 10px;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+        
+        .btn-select { background-color: #34495e; color: white; border: 1px solid #4a6278; }
+        .btn-select:hover { background-color: #415b76; }
+        .btn-highway { background-color: #F9D462; color: #333; }
+        .btn-street { background-color: #ecf0f1; color: #333; }
+        .btn-delete { background-color: #e74c3c; color: white; margin-top: 10px; }
+        .btn-save { background-color: #27ae60; color: white; margin-top: auto;}
+        .btn-load { background-color: #3498db; color: white; }
+        .btn-help { background-color: #95a5a6; color: white; margin-top: 10px; }
+        .btn-label { background-color: #9b59b6; color: white; }
+        
+        .toggle-container {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; margin-top: 10px;
+        }
+        .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; position: absolute; top: 15px; right: 15px; color: #999;}
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2 style="margin:0;">Ghost City</h2>
+    <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v27: Comprehensive Guide</p>
+    
+    <button class="btn-select" onclick="enterSelectMode()">
+        <span>👆</span> Select / Edit
+    </button>
+    
+    <button class="btn-label" onclick="labelSelected()">
+        <span>🏷️</span> Label Road
+    </button>
+
+    <div id="nudge-controls">
+        <div style="font-size:11px; color:#ccc; margin-bottom:5px;">MOVE LABEL</div>
+        <div class="nudge-row">
+            <button class="btn-nudge" onclick="nudgeLabel(0, -0.5)">⬆️</button>
+        </div>
+        <div class="nudge-row">
+            <button class="btn-nudge" onclick="nudgeLabel(-0.5, 0)">⬅️</button>
+            <button class="btn-nudge" onclick="nudgeLabel(0, 0.5)">⬇️</button>
+            <button class="btn-nudge" onclick="nudgeLabel(0.5, 0)">➡️</button>
+        </div>
+    </div>
+
+    <div style="height:10px;"></div>
+
+    <button class="btn-highway" onclick="startDrawing('highway')">
+        <span>🛣️</span> Draw Highway
+    </button>
+    
+    <button class="btn-street" onclick="startDrawing('street')">
+        <span>🏘️</span> Draw Street
+    </button>
+    
+    <div class="toggle-container">
+        <input type="checkbox" id="smooth-toggle" style="width:20px; height:20px;">
+        <label for="smooth-toggle">Auto-Smooth</label>
+    </div>
+
+    <button class="btn-delete" onclick="smartDelete()">
+        <span>🗑️</span> Delete (Point/Road)
+    </button>
+
+    <button class="btn-help" onclick="toggleHelp()">
+        <span>❓</span> Open User Guide
+    </button>
+
+    <div style="flex-grow:1;"></div>
+
+    <button class="btn-save" onclick="downloadMap()">💾 Save Map</button>
+    <button class="btn-load" onclick="document.getElementById('file-input').click()">📂 Load Map</button>
+    <input type="file" id="file-input" style="display:none" onchange="loadMap(this)" accept=".geojson,.json" />
+</div>
+
+<div id="help-panel">
+    <button class="close-btn" onclick="toggleHelp()">✖</button>
+    <h2>Ghost City Manual</h2>
+    
+    <h4>1. Drawing & Layering</h4>
+    <ul>
+        <li><strong>Highways (Yellow):</strong> These automatically render on the <em>Top Layer</em>. Use them for main arteries.</li>
+        <li><strong>Streets (White):</strong> These render on the <em>Bottom Layer</em>. Use them for neighborhoods.</li>
+        <li><strong>Overpasses:</strong> If you draw a Highway across a Street, it will automatically look like an overpass bridge.</li>
+        <li><strong>Auto-Smooth:</strong> Keep this checked to turn your clicks into perfect curves. Uncheck it for sharp, boxy city grids.</li>
+    </ul>
+
+    <h4>2. Editing Lines</h4>
+    <ul>
+        <li>Click the <strong>👆 Select / Edit</strong> button.</li>
+        <li>Click any road. It will turn <strong>Orange</strong> and show <strong>White Dots</strong> (vertices).</li>
+        <li><strong>Move:</strong> Drag the White Dots to reshape the road.</li>
+        <li><strong>Add Points:</strong> Click the faint <strong>Blue Dots</strong> halfway between points to create a new bend.</li>
+    </ul>
+
+    <h4>3. Smart Deleting</h4>
+    <p style="font-size:13px; margin-left:20px;">The delete button is context-sensitive:</p>
+    <ul>
+        <li><strong>Delete a Road:</strong> Select a road so it turns Orange, then press <span class="key">Delete</span>.</li>
+        <li><strong>Delete a Bend:</strong> Click a specific White Dot so it turns <strong>Red</strong>, then press <span class="key">Delete</span>. The road will snap to the remaining points.</li>
+    </ul>
+
+    <h4>4. Labels & Nudging</h4>
+    <ul>
+        <li>Select a road and click <strong>🏷️ Label Road</strong>.</li>
+        <li>Type the name and hit Enter. The text will curve along the line.</li>
+        <li><strong>Nudge Tool:</strong> When you select a labeled road, Arrow buttons appear in the left sidebar. Use them to slide text Left/Right or push it Up/Down away from the line.</li>
+    </ul>
+
+    <h4>5. Navigation (3D)</h4>
+    <ul>
+        <li><strong>Pan:</strong> Left-Click + Drag.</li>
+        <li><strong>Zoom:</strong> Scroll Wheel or top-right +/- buttons.</li>
+        <li><strong>Tilt/Rotate:</strong> Right-Click + Drag.</li>
+        <li><strong>Reset:</strong> Click the Compass icon (top right) to reset North.</li>
+    </ul>
+
+    <h4>6. Saving Your Work</h4>
+    <ul>
+        <li>Click <strong>Save Map</strong> to download a <code>.geojson</code> file.</li>
+        <li>You can load this file back later, or open it in professional GIS software (like QGIS).</li>
+    </ul>
+</div>
+
+<div id="map"></div>
+
+<script>
+    let currentRoadType = 'highway'; 
+    const DEFAULT_OFFSET = [0, -1]; 
+
+    var map = new maplibregl.Map({
+        container: 'map', 
+        center: [0, 0], 
+        zoom: 14,
+        style: {
+            "version": 8, "name": "Blank", 
+            "glyphs": "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+            "sources": {},
+            "layers": [{ "id": "background", "type": "background", "paint": { "background-color": "#e5e5e5" } }]
+        }
+    });
+
+    var nav = new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true });
+    map.addControl(nav, 'top-right');
+
+    const styles = [
+        { "id": "gl-draw-polygon-and-line-midpoint", "type": "circle", "filter": ["all", ["==", "$type", "Point"], ["==", "meta", "midpoint"]], "paint": { "circle-radius": 5, "circle-color": "#3498db", "circle-opacity": 0.6 } },
+        { "id": "street-border", "type": "line", "filter": ["all", ["==", "$type", "LineString"], ["!=", "active", "true"], ["==", "user_roadType", "street"]], "layout": { "line-cap": "round", "line-join": "round" }, "paint": { "line-color": "#cfcfcf", "line-width": 8 } },
+        { "id": "street-fill", "type": "line", "filter": ["all", ["==", "$type", "LineString"], ["!=", "active", "true"], ["==", "user_roadType", "street"]], "layout": { "line-cap": "round", "line-join": "round" }, "paint": { "line-color": "#ffffff", "line-width": 6 } },
+        { "id": "highway-border", "type": "line", "filter": ["all", ["==", "$type", "LineString"], ["!=", "active", "true"], ["==", "user_roadType", "highway"]], "layout": { "line-cap": "round", "line-join": "round" }, "paint": { "line-color": "#e6b058", "line-width": 14 } },
+        { "id": "highway-fill", "type": "line", "filter": ["all", ["==", "$type", "LineString"], ["!=", "active", "true"], ["==", "user_roadType", "highway"]], "layout": { "line-cap": "round", "line-join": "round" }, "paint": { "line-color": "#F9D462", "line-width": 10 } },
+        { "id": "gl-draw-line-active", "type": "line", "filter": ["all", ["==", "$type", "LineString"], ["==", "active", "true"]], "layout": { "line-cap": "round", "line-join": "round" }, "paint": { "line-color": "#FF9900", "line-width": 4 } },
+        { "id": "gl-draw-vertex-inactive", "type": "circle", "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["!=", "active", "true"]], "paint": { "circle-radius": 6, "circle-color": "#fff", "circle-stroke-color": "#000", "circle-stroke-width": 2 } },
+        { "id": "gl-draw-vertex-active", "type": "circle", "filter": ["all", ["==", "meta", "vertex"], ["==", "$type", "Point"], ["==", "active", "true"]], "paint": { "circle-radius": 8, "circle-color": "#e74c3c", "circle-stroke-color": "#fff", "circle-stroke-width": 2 } },
+        {
+            "id": "gl-draw-line-text",
+            "type": "symbol",
+            "filter": ["all", ["==", "$type", "LineString"], ["has", "user_name"]],
+            "layout": {
+                "text-field": ["get", "user_name"],
+                "symbol-placement": "line",
+                "text-font": ["Noto Sans Regular"], 
+                "text-size": 12,
+                "text-offset": ["coalesce", ["get", "user_offset"], ["literal", [0, -1]]],
+                "text-anchor": "center",
+                "text-ignore-placement": true,
+                "text-allow-overlap": true
+            },
+            "paint": {
+                "text-color": "#333",
+                "text-halo-color": "#fff",
+                "text-halo-width": 2
+            }
+        }
+    ];
+
+    var draw = new MapboxDraw({ displayControlsDefault: false, userProperties: true, styles: styles });
+    map.addControl(draw);
+
+    map.on('mousemove', function(e) {
+        if (draw.getMode() === 'draw_line_string') { map.getCanvas().style.cursor = 'crosshair'; return; }
+        var featureIds = draw.getFeatureIdsAt(e.point);
+        if (featureIds.length > 0) { map.getCanvas().style.cursor = 'pointer'; } 
+        else { map.getCanvas().style.cursor = ''; }
+    });
+
+    map.on('error', function(e) { console.error("Map Error:", e.error); });
+
+    function toggleHelp() { document.getElementById('help-panel').classList.toggle('open'); }
+    function enterSelectMode() { draw.changeMode('simple_select'); }
+    function startDrawing(type) { currentRoadType = type; draw.changeMode('draw_line_string'); }
+    
+    function labelSelected() {
+        var selectedIds = draw.getSelectedIds();
+        if (selectedIds.length === 0) { alert("Please select a road first!"); return; }
+        var currentName = "";
+        var name = prompt("Enter street name:", currentName);
+        if (name !== null) {
+            draw.setFeatureProperty(selectedIds[0], 'name', name);
+            draw.setFeatureProperty(selectedIds[0], 'offset', [0, -1]);
+            showNudgeControls(true);
+        }
+    }
+
+    map.on('draw.selectionchange', function(e) {
+        if (e.features.length > 0) {
+            var f = e.features[0];
+            if (f.geometry.type === 'LineString') {
+                 showNudgeControls(true);
+                 var featureId = f.id;
+                 setTimeout(() => { 
+                     if(draw.getMode() === 'simple_select') {
+                        draw.changeMode('direct_select', { featureId: featureId }); 
+                     }
+                 }, 50);
+                 return;
+            }
+        }
+        showNudgeControls(false);
+    });
+
+    function showNudgeControls(show) {
+        document.getElementById('nudge-controls').style.display = show ? 'block' : 'none';
+    }
+
+    function nudgeLabel(dx, dy) {
+        var selectedIds = draw.getSelectedIds();
+        if (selectedIds.length === 0) return;
+        var id = selectedIds[0];
+        var currentFeature = draw.get(id);
+        var currentOffset = currentFeature.properties.offset || [0, -1];
+        draw.setFeatureProperty(id, 'offset', [currentOffset[0] + dx, currentOffset[1] + dy]);
+    }
+
+    function smartDelete() {
+        var selectedPoints = draw.getSelectedPoints();
+        if (selectedPoints.features.length > 0) { draw.trash(); } 
+        else {
+            var selectedIds = draw.getSelectedIds();
+            if (selectedIds.length > 0) { draw.delete(selectedIds); } else { draw.trash(); }
+        }
+    }
+    document.addEventListener('keydown', function(e) { if (e.key === 'Delete' || e.key === 'Backspace') smartDelete(); });
+
+    map.on('draw.create', updateRoute);
+    map.on('draw.update', updateRoute);
+
+    function updateRoute(e) {
+        if (draw.getMode() === 'simple_select' || draw.getMode() === 'direct_select') return;
+        var feature = e.features[0];
+        if (feature.geometry.type !== 'LineString') return;
+        if (document.getElementById('smooth-toggle').checked && feature.geometry.coordinates.length > 2) {
+            draw.delete(feature.id); 
+            var curved = turf.bezierSpline(feature, { resolution: 10000, sharpness: 0.85 });
+            curved.properties = { 
+                roadType: currentRoadType, 
+                name: feature.properties.name || "",
+                offset: feature.properties.offset || [0, -1]
+            };
+            draw.add(curved);
+        } else {
+            draw.setFeatureProperty(feature.id, 'roadType', currentRoadType);
+        }
+    }
+
+    function downloadMap() {
+        var data = draw.getAll();
+        if (data.features.length === 0) { alert("Map is empty!"); return; }
+        var blob = new Blob([JSON.stringify(data)], {type: "application/geo+json"});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "ghost-city.geojson";
+        a.click();
+    }
+    function loadMap(input) {
+        var file = input.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var json = JSON.parse(e.target.result);
+                draw.deleteAll(); draw.add(json);
+                var bounds = new maplibregl.LngLatBounds();
+                json.features.forEach(f => f.geometry.coordinates.forEach(c => bounds.extend(c)));
+                if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 });
+            } catch (error) { alert("Error: " + error); }
+        };
+        reader.readAsText(file);
+        input.value = '';
+    }
+</script>
+</body>
+</html>
