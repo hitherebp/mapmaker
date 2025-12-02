@@ -1,25 +1,48 @@
-body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden;}
-/* SIDEBAR */
+/* --- 1. GLOBAL RESET (Fixes the size math) --- */
+* {
+    box-sizing: border-box; /* Ensures padding doesn't make elements bigger than 100% */
+}
+
+body { 
+    margin: 0; 
+    padding: 0; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    display: flex; 
+    /* Use 'dvh' to account for mobile browser address bars */
+    height: 100dvh; 
+    width: 100vw;
+    overflow: hidden; /* Stop the whole page from bouncing */
+}
+
+/* --- 2. SIDEBAR (Scrollable) --- */
 #sidebar {
     width: 250px; 
     background: #2c3e50; 
     color: white; 
     padding: 20px;
+    
+    /* Flexbox Layout */
     display: flex; 
     flex-direction: column; 
     gap: 12px; 
     z-index: 2000;
     box-shadow: 2px 0 5px rgba(0,0,0,0.2);
     
-    /* --- IPAD FIX START --- */
-    height: 100vh;                  /* Force full height */
-    overflow-y: auto;               /* Allow scrolling if content is too long */
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-    /* --- IPAD FIX END --- */
+    /* SCROLL FIX */
+    height: 100%;       /* Match the body height exactly */
+    overflow-y: auto;   /* Scroll ONLY the sidebar if buttons don't fit */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on iPad */
+    flex-shrink: 0;     /* Prevent sidebar from getting squished */
 }
 
-#map { flex-grow: 1; position: relative; background-color: #f0f0f0; }
+/* --- 3. MAP AREA --- */
+#map { 
+    flex-grow: 1; 
+    position: relative; 
+    background-color: #f0f0f0; 
+}
 
+/* --- 4. HELP PANEL --- */
 #help-panel {
     position: absolute; top: 0; right: 0; bottom: 0; width: 350px;
     background: white; z-index: 3000;
@@ -29,41 +52,41 @@ body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, 
     line-height: 1.6; color: #333;
 }
 #help-panel.open { transform: translateX(0); }
+.close-btn { background: none; border: none; font-size: 20px; cursor: pointer; position: absolute; top: 15px; right: 15px; color: #999;}
 #help-panel h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; color: #2c3e50; }
 #help-panel h4 { margin: 20px 0 10px 0; color: #2980b9; font-size: 16px; border-left: 4px solid #2980b9; padding-left: 10px; }
 #help-panel ul { padding-left: 20px; font-size: 13px; color: #555; }
 
-.close-btn { background: none; border: none; font-size: 20px; cursor: pointer; position: absolute; top: 15px; right: 15px; color: #999;}
-
+/* --- 5. UI CONTROLS --- */
 .context-menu {
     display: none; background: rgba(0,0,0,0.2); padding: 10px;
     border-radius: 6px; margin-top: 5px; text-align: center;
 }
-
 .control-label { font-size:10px; color:#ccc; margin-bottom:4px; text-transform: uppercase; letter-spacing: 1px;}
 .control-row { display: flex; justify-content: center; gap: 5px; margin-bottom: 8px; }
 .btn-mini { width: 30px; height: 30px; padding: 0; justify-content: center; background: #34495e; font-size: 16px; border: 1px solid #555; cursor:pointer; color:white; border-radius:4px;}
 .btn-mini:hover { background: #4e6a85; }
 .btn-wide { width: 100%; font-size: 12px; padding: 8px; }
 
+/* BUTTONS */
 button { padding: 12px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 10px; transition: transform 0.1s; }
 button:active { transform: scale(0.98); }
 
 .btn-select { background-color: #34495e; color: white; border: 1px solid #4a6278; }
-.btn-select:hover { background-color: #415b76; }
-
-.btn-freeway { background-color: #7a8ea3; color: white; } 
-.btn-ramp { background-color: #aebdc9; color: #333; }     
-.btn-major { background-color: #ecf0f1; color: #333; }    
-.btn-minor { background-color: #bdc3c7; color: #333; }    
-
+.btn-undo { background-color: #f1c40f; color: #333; }
+.btn-label { background-color: #9b59b6; color: white; }
 .btn-delete { background-color: #e74c3c; color: white; margin-top: 10px; }
 .btn-delete.point-mode { background-color: #8e44ad; } 
 .btn-save { background-color: #27ae60; color: white; margin-top: auto;}
 .btn-load { background-color: #3498db; color: white; }
 .btn-help { background-color: #95a5a6; color: white; margin-top: 10px; }
-.btn-undo { background-color: #f1c40f; color: #333; }
-.btn-label { background-color: #9b59b6; color: white; }
+
+/* ROAD COLORS */
+.btn-freeway { background-color: #7a8ea3; color: white; } 
+.btn-ramp { background-color: #aebdc9; color: #333; }     
+.btn-major { background-color: #ecf0f1; color: #333; }    
+.btn-minor { background-color: #bdc3c7; color: #333; }    
+
 .btn-curve { background-color: #27ae60; color: white; width:100%; }
 .btn-straight { background-color: #e67e22; color: white; width:100%; }
 
