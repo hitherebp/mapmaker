@@ -126,6 +126,17 @@ button:active { transform: scale(0.98); }
     width: 48%; /* Split the row */
 }
 
+/* BRIDGE BUTTON */
+.btn-bridge { 
+    background-color: #8e44ad; /* Purple */
+    color: white; 
+}
+.btn-bridge.active-state {
+    background-color: #ffffff;
+    color: #8e44ad;
+    border: 2px solid #8e44ad;
+}
+
 /* ROW LAYOUTS */
 .control-row { 
     display: flex; 
