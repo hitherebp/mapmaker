@@ -17,9 +17,12 @@
 
     <div id="sidebar">
         <h2 style="margin:0; color:white;">MapMaker</h2>
-        <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v64: Active States</p>
-        
-        <button class="btn-undo" onclick="undo()"><span>↩️</span> Undo</button>
+        <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v0.1 Test</p>
+
+        <div class="control-row">
+            <button class="btn-undo" onclick="undo()"><span>↩️</span> Undo</button>
+            <button class="btn-redo" onclick="redo()"><span>↪️</span> Redo</button>
+        </div>
         <div style="height:10px;"></div>
     
         <button id="btn-select" class="btn-select" onclick="enterSelectMode()"><span>👆</span> Select / Edit</button>
@@ -42,8 +45,8 @@
             </div>
             <div class="control-label">Rotate</div>
             <div class="control-row">
-                <button class="btn-mini" onclick="rotateLabel(-5)">↺</button>
-                <button class="btn-mini" onclick="rotateLabel(5)">↻</button>
+                <button class="btn-mini" onclick="rotateLabel(-15)">↺</button>
+                <button class="btn-mini" onclick="rotateLabel(15)">↻</button>
             </div>
             <div class="control-row">
                 <button class="btn-mini btn-wide" onclick="editLabelText()">✎ Edit Text</button>

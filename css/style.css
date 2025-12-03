@@ -112,7 +112,28 @@ button:active { transform: scale(0.98); }
 }
 
 .btn-select { background-color: #34495e; color: white; border: 1px solid #4a6278; }
-.btn-undo { background-color: #f1c40f; color: #333; }
+
+/* HISTORY BUTTONS */
+.btn-undo { 
+    background-color: #f1c40f; /* Yellow */
+    color: #333; 
+    width: 48%; /* Split the row */
+}
+
+.btn-redo { 
+    background-color: #e67e22; /* Orange */
+    color: #fff; 
+    width: 48%; /* Split the row */
+}
+
+/* Ensure they sit side-by-side */
+.control-row { 
+    display: flex; 
+    justify-content: space-between; 
+    gap: 4%; 
+    margin-bottom: 8px; 
+}
+
 .btn-label { background-color: #9b59b6; color: white; }
 .btn-delete { background-color: #e74c3c; color: white; margin-top: 10px; }
 .btn-delete.point-mode { background-color: #8e44ad; } 

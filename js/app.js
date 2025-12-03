@@ -101,11 +101,22 @@ window.smartDelete = function() {
     saveState();
 }
 
+// --- UNDO / REDO SYSTEM ---
 window.saveState = function() {
-    if (historyStep < historyStack.length - 1) historyStack = historyStack.slice(0, historyStep + 1);
+    // If we are in the past, cut off the future (create new timeline)
+    if (historyStep < historyStack.length - 1) {
+        historyStack = historyStack.slice(0, historyStep + 1);
+    }
+    
+    // Save snapshot
     historyStack.push(JSON.stringify(draw.getAll()));
     historyStep++;
-    if (historyStack.length > 20) { historyStack.shift(); historyStep--; }
+    
+    // Limit history to 50 steps to prevent memory crashes
+    if (historyStack.length > 50) { 
+        historyStack.shift(); 
+        historyStep--; 
+    }
 }
 
 window.undo = function() {
@@ -113,6 +124,18 @@ window.undo = function() {
         historyStep--;
         draw.set(JSON.parse(historyStack[historyStep]));
         updateVisuals();
+    } else {
+        console.log("Nothing to undo");
+    }
+}
+
+window.redo = function() {
+    if (historyStep < historyStack.length - 1) {
+        historyStep++;
+        draw.set(JSON.parse(historyStack[historyStep]));
+        updateVisuals();
+    } else {
+        console.log("Nothing to redo");
     }
 }
 
@@ -223,8 +246,22 @@ map.on('mouseup', function() { if (draw.getMode() === 'direct_select' || draw.ge
 map.on('draw.delete', function(){ updateVisuals(); saveState(); });
 
 document.addEventListener('keydown', function(e) { 
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { undo(); return; }
-    if (e.key === 'Delete' || e.key === 'Backspace') smartDelete(); 
+    // 1. Undo (Ctrl + Z)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { 
+        e.preventDefault();
+        undo(); 
+    }
+    
+    // 2. Redo (Ctrl + Y) OR (Ctrl + Shift + Z)
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { 
+        e.preventDefault();
+        redo(); 
+    }
+
+    // 3. Delete (Backspace or Delete key)
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        smartDelete();
+    }
 });
 
 window.updateVisuals = function() {
