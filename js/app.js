@@ -22,102 +22,16 @@ map.addControl(nav, 'top-right');
 
 window.draw = new MapboxDraw({ displayControlsDefault: false, userProperties: true, styles: drawStyles });
 
-// --- LOAD LAYERS ---
+// --- LOAD LAYERS (REFACTORED) ---
 map.on('load', function() {
     map.addControl(draw);
-    var layers = map.getStyle().layers;
-    var firstDrawLayerId;
-    for (var i = 0; i < layers.length; i++) { if (layers[i].id.indexOf('gl-draw') === 0) { firstDrawLayerId = layers[i].id; break; } }
-
-    map.addSource('smooth_source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addSource('snap_indicator', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-
-    map.addLayer({ "id": "visual-snap-marker", "type": "circle", "source": "snap_indicator", "paint": { "circle-radius": 8, "circle-color": "#2ecc71", "circle-stroke-width": 3, "circle-stroke-color": "#ffffff", "circle-opacity": 0.8 } });
-
-    // --- STYLES ---
-    const styles = {
-        minor:   { width: 9,  fill: 5,  color: '#d6d6d6', fillColor: '#d9d9d9' },
-        major:   { width: 12, fill: 8,  color: '#cfcfcf', fillColor: '#d9d9d9' },
-        ramp:    { width: 8,  fill: 4,  color: '#687d99', fillColor: '#90a4c2' },
-        freeway: { width: 18, fill: 14, color: '#687d99', fillColor: '#90a4c2' }
-    };
-
-    // ===============================================
-    // GROUP 1: SURFACE STREETS (The Foundation)
-    // These sit at the very bottom.
-    // ===============================================
     
-    // 1. Borders
-    ['major', 'minor'].forEach(type => {
-        map.addLayer({ 
-            "id": `visual-${type}-border`, "type": "line", "source": "smooth_source", 
-            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
-            "paint": { "line-color": styles[type].color, "line-width": styles[type].width } 
-        }, firstDrawLayerId);
-    });
-
-    // 2. Fills
-    ['major', 'minor'].forEach(type => {
-        map.addLayer({ 
-            "id": `visual-${type}-fill`, "type": "line", "source": "smooth_source", 
-            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
-            "paint": { "line-color": styles[type].fillColor, "line-width": styles[type].fill } 
-        }, firstDrawLayerId);
-    });
-
-
-    // ===============================================
-    // GROUP 2: HIGHWAY INFRASTRUCTURE (The Overlords)
-    // These sit ON TOP of surface streets.
-    // ===============================================
-
-    // 3. Highway Borders (Freeway + Ramp)
-    // Drawing these *after* Surface Fills ensures the Freeway outline cuts off the street below.
-    ['freeway', 'ramp'].forEach(type => {
-        map.addLayer({ 
-            "id": `visual-${type}-border`, "type": "line", "source": "smooth_source", 
-            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
-            "paint": { "line-color": styles[type].color, "line-width": styles[type].width } 
-        }, firstDrawLayerId);
-    });
-
-    // 4. Freeway Fill (The Blue Pavement)
-    map.addLayer({ 
-        "id": "visual-freeway-fill", "type": "line", "source": "smooth_source", 
-        "filter": ["all", ["==", "roadType", "freeway"], ["!=", "isBridge", true]], 
-        "paint": { "line-color": styles.freeway.fillColor, "line-width": styles.freeway.fill } 
-    }, firstDrawLayerId);
-
-    // 5. Ramp Fill (The Merge Lane)
-    // CRITICAL: This draws LAST. The white ramp pavement covers the Freeway Border,
-    // creating the seamless "Intersection" look while keeping the Freeway visually higher than streets.
-    map.addLayer({ 
-        "id": "visual-ramp-fill", "type": "line", "source": "smooth_source", 
-        "filter": ["all", ["==", "roadType", "ramp"], ["!=", "isBridge", true]], 
-        "paint": { "line-color": styles.ramp.fillColor, "line-width": styles.ramp.fill } 
-    }, firstDrawLayerId);
-
-
-    // ===============================================
-    // GROUP 3: BRIDGES (The Flyovers)
-    // ===============================================
-    
-    const allTypes = ['minor', 'major', 'ramp', 'freeway'];
-    allTypes.forEach(t => {
-        // Bridge Border
-        map.addLayer({ 
-            "id": `bridge-${t}-border`, "type": "line", "source": "smooth_source", 
-            "filter": ["all", ["==", "roadType", t], ["==", "isBridge", true]], 
-            "paint": { "line-color": "#506070", "line-width": styles[t].width + 2 } 
-        }, firstDrawLayerId);
-        
-        // Bridge Fill
-        map.addLayer({ 
-            "id": `bridge-${t}-fill`, "type": "line", "source": "smooth_source", 
-            "filter": ["all", ["==", "roadType", t], ["==", "isBridge", true]], 
-            "paint": { "line-color": styles[t].fillColor, "line-width": styles[t].fill + 2 } 
-        }, firstDrawLayerId);
-    });
+    // Call the external function from js/layers.js
+    if (window.addMapLayers) {
+        window.addMapLayers(map);
+    } else {
+        alert("Error: layers.js not loaded!");
+    }
     
     saveState();
 });
@@ -191,9 +105,7 @@ function showSnapMarker(coords) {
     }
 }
 
-// --- TOPOLOGY LOGIC (Sticky Roads) ---
-
-// 1. SNAP & BIND: Connects this road to a target, saving the ID and Ratio
+// --- LOGIC: SNAP & STICKY ROADS ---
 function applySnapping(feature) {
     var snapEnabled = document.getElementById('snap-toggle').checked;
     if (!snapEnabled || feature.geometry.type !== 'LineString') return false;
@@ -204,9 +116,9 @@ function applySnapping(feature) {
     var endPt = coords[coords.length - 1];
     
     var didSnap = false;
-    var snapDistance = 0.1; // 100m snap radius
+    var snapDistance = 0.1; 
 
-    // Reset connections (Assume disconnected unless we snap below)
+    // Reset old connection data
     feature.properties.connectedStartId = null;
     feature.properties.connectedStartRatio = null;
     feature.properties.connectedEndId = null;
@@ -229,14 +141,8 @@ function applySnapping(feature) {
                 minDist = dist;
                 bestSnap = snapped.geometry.coordinates;
                 bestTarget = other;
-                
-                // Calculate Ratio (Distance along line / Total Length)
                 var len = turf.length(other);
-                if (len > 0) {
-                    bestRatio = snapped.properties.location / len;
-                } else {
-                    bestRatio = 0;
-                }
+                bestRatio = (len > 0) ? snapped.properties.location / len : 0;
             }
         });
         return { coords: bestSnap, targetId: bestTarget ? bestTarget.id : null, ratio: bestRatio };
@@ -264,12 +170,11 @@ function applySnapping(feature) {
 
     if (didSnap) {
         feature.geometry.coordinates = coords;
-        draw.add(feature); // Updates the geometry AND properties
+        draw.add(feature);
     }
     return didSnap;
 }
 
-// 2. UPDATE CHILDREN: When a parent moves, drag its connected children
 function updateConnectedRoads(parentFeature) {
     if (parentFeature.geometry.type !== 'LineString') return;
 
@@ -278,35 +183,32 @@ function updateConnectedRoads(parentFeature) {
     var parentLen = turf.length(parentFeature);
 
     allFeatures.forEach(child => {
-        if (child.id === parentId) return; // Skip self
-        if (child.geometry.type !== 'LineString') return; // Skip non-roads
+        if (child.id === parentId) return; 
+        if (child.geometry.type !== 'LineString') return; 
 
         var needsUpdate = false;
         var coords = child.geometry.coordinates;
 
-        // Check Start Connection
+        // Start Connection
         if (child.properties.connectedStartId === parentId) {
             var ratio = child.properties.connectedStartRatio;
             if (ratio !== undefined && ratio !== null) {
-                var newPt = turf.along(parentFeature, parentLen * ratio).geometry.coordinates;
-                coords[0] = newPt;
+                coords[0] = turf.along(parentFeature, parentLen * ratio).geometry.coordinates;
                 needsUpdate = true;
             }
         }
-
-        // Check End Connection
+        // End Connection
         if (child.properties.connectedEndId === parentId) {
             var ratio = child.properties.connectedEndRatio;
             if (ratio !== undefined && ratio !== null) {
-                var newPt = turf.along(parentFeature, parentLen * ratio).geometry.coordinates;
-                coords[coords.length - 1] = newPt;
+                coords[coords.length - 1] = turf.along(parentFeature, parentLen * ratio).geometry.coordinates;
                 needsUpdate = true;
             }
         }
 
         if (needsUpdate) {
             child.geometry.coordinates = coords;
-            draw.add(child); // Push update to map
+            draw.add(child);
         }
     });
 }
@@ -394,18 +296,9 @@ window.toggleLineSmoothing = function() {
     } 
 }
 
-window.rotateLabel = function(deg) { 
-    var id = window.lastSelectedId;
-    if (id) { var f = draw.get(id); if (f) { var newRot = (f.properties.rotation || 0) + deg; f.properties.rotation = newRot; updateAndSelect(f); } } 
-}
-window.nudgeLabel = function(dx, dy) { 
-    var id = window.lastSelectedId;
-    if (id) { var f = draw.get(id); if (f) { var c = f.properties.offset || [0, -1.5]; f.properties.offset = [c[0] + dx/10, c[1] + dy/10]; updateAndSelect(f); } } 
-}
-window.editLabelText = function() { 
-    var id = window.lastSelectedId;
-    if (id) { var f = draw.get(id); if (f) { var n = prompt("Edit label:", f.properties.name); if(n) { f.properties.name = n; updateAndSelect(f); } } } 
-}
+window.rotateLabel = function(deg) { var id = window.lastSelectedId; if (id) { var f = draw.get(id); if (f) { var newRot = (f.properties.rotation || 0) + deg; f.properties.rotation = newRot; updateAndSelect(f); } } }
+window.nudgeLabel = function(dx, dy) { var id = window.lastSelectedId; if (id) { var f = draw.get(id); if (f) { var c = f.properties.offset || [0, -1.5]; f.properties.offset = [c[0] + dx/10, c[1] + dy/10]; updateAndSelect(f); } } }
+window.editLabelText = function() { var id = window.lastSelectedId; if (id) { var f = draw.get(id); if (f) { var n = prompt("Edit label:", f.properties.name); if(n) { f.properties.name = n; updateAndSelect(f); } } } }
 
 window.smartDelete = function() {
     var pts = draw.getSelectedPoints();
@@ -467,17 +360,10 @@ map.on('draw.create', function(e) {
 });
 
 map.on('draw.update', function(e) {
-    // 1. Handle Dragging a Single Feature
-    if (e.features.length > 0) {
-        var f = e.features[0];
-        
-        // Attempt new Snap
-        applySnapping(f); 
-        
-        // Push changes to children (Sticky Roads)
-        updateConnectedRoads(f);
+    if (e.features.length > 0) { 
+        applySnapping(e.features[0]); 
+        updateConnectedRoads(e.features[0]);
     }
-
     updateVisuals(); 
     if (e.features.length > 0 && e.features[0].geometry.type === 'LineString') {
         var roadId = e.features[0].id;
@@ -514,60 +400,18 @@ window.saveState = function() {
 }
 window.undo = function() { if (historyStep > 0) { historyStep--; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); } }
 window.redo = function() { if (historyStep < historyStack.length - 1) { historyStep++; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); } }
-
 function downloadMap() {
     var data = draw.getAll();
     if (data.features.length === 0) { alert("Map is empty!"); return; }
-    
-    // 1. Get Title from Input
     var titleInput = document.getElementById('map-title').value;
     var safeTitle = titleInput.trim() || "mapmaker";
-    
-    // 2. Create Filename (Sanitize: "New York City!" -> "new-york-city")
     var filename = safeTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase() + ".geojson";
-
-    // 3. Download
     var blob = new Blob([JSON.stringify(data)], {type: "application/geo+json"});
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
 }
-
 function loadMap(input) {
-    var file = input.files[0];
-    if (!file) return;
-
-    // 1. Auto-fill Title from Filename
-    // Remove extension (.geojson) and replace dashes with spaces
-    var cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/-/g, " ");
-    
-    // Capitalize Words (Optional polish)
-    cleanName = cleanName.replace(/\b\w/g, l => l.toUpperCase());
-    
-    document.getElementById('map-title').value = cleanName;
-    document.title = cleanName; // Update Browser Tab
-
-    // 2. Read File
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            var json = JSON.parse(e.target.result);
-            draw.deleteAll();
-            draw.add(json);
-            updateVisuals();
-            saveState();
-            
-            // Zoom to fit
-            var bounds = new maplibregl.LngLatBounds();
-            json.features.forEach(f => {
-                if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates);
-                else f.geometry.coordinates.forEach(c => bounds.extend(c));
-            });
-            if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 });
-            
-        } catch (error) { alert("Error: " + error); }
-    };
-    reader.readAsText(file);
-    input.value = '';
+    var file = input.files[0]; if (!file) return;
+    var cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+    document.getElementById('map-title').value = cleanName; document.title = cleanName;
+    var reader = new FileReader(); reader.onload = function(e) { try { var json = JSON.parse(e.target.result); draw.deleteAll(); draw.add(json); updateVisuals(); saveState(); var bounds = new maplibregl.LngLatBounds(); json.features.forEach(f => { if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates); else f.geometry.coordinates.forEach(c => bounds.extend(c)); }); if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 }); } catch (error) { alert("Error: " + error); } }; reader.readAsText(file); input.value = '';
 }

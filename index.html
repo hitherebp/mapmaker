@@ -95,29 +95,28 @@
 <div id="main-content">
     <div id="help-panel">
         <button class="close-btn" onclick="toggleHelp()">✖</button>
-        <h2>MapMaker Manual</h2>
-        <h4>1. Road Hierarchy</h4>
+        <h2>MapMaker Guide</h2>
+        <p style="color:#7f8c8d; font-size:12px;">v78 • Infrastructure Engine</p>
+
+        <h4>1. Drawing & Snapping</h4>
         <ul>
-            <li><strong>🛣️ Freeway:</strong> Top layer. Thick slate-blue.</li>
-            <li><strong>⤴️ Ramp:</strong> Middle layer. Connects Freeways.</li>
-            <li><strong>🏙️ Major Road:</strong> Arterial layer. Wide white lines.</li>
-            <li><strong>🏘️ Minor Street:</strong> Bottom layer. Thin white lines.</li>
+            <li><strong>🧲 Snap Toggle:</strong> When ON, road ends will magnetize to other roads (Green Flash).</li>
+            <li><strong>Sticky Roads:</strong> Connected roads move together. Drag a parent road to move its children.</li>
+            <li><strong>Split:</strong> Connecting to the middle of a road splits it into two segments.</li>
         </ul>
-        <h4>2. Drawing & Smoothing</h4>
+
+        <h4>2. Road Hierarchy</h4>
         <ul>
-            <li><strong>Click</strong> to place points. <strong>Double-Click</strong> to finish.</li>
-            <li><strong>Auto-Smooth:</strong> Checkbox controls default curve.</li>
-            <li><strong>Manual Toggle:</strong> Use sidebar button to switch Smooth/Straight.</li>
+            <li><strong>🛣️ Freeway:</strong> Top level. Blue-grey pavement.</li>
+            <li><strong>⤴️ Ramp:</strong> White pavement. Merges visually on top of Freeways.</li>
+            <li><strong>🌉 Bridge Mode:</strong> Select a road and click "Make Bridge" to raise it above ground traffic.</li>
         </ul>
-        <h4>3. Editing</h4>
+
+        <h4>3. Edit Tools</h4>
         <ul>
-            <li><strong>Skeleton:</strong> Click road to see Red Dashed Line.</li>
-            <li><strong>Edit:</strong> Drag White Dots to reshape.</li>
-        </ul>
-        <h4>4. Labels</h4>
-        <ul>
-            <li><strong>Anchor:</strong> Place near road to lock position.</li>
-            <li><strong>Edit:</strong> Click label to Move/Rotate.</li>
+            <li><strong>Naming:</strong> Type in the top box to name your city.</li>
+            <li><strong>Save/Load:</strong> Saves as .geojson. Auto-renames file based on city name.</li>
+            <li><strong>History:</strong> Use Undo/Redo buttons or Ctrl+Z / Ctrl+Y.</li>
         </ul>
     </div>
 
@@ -126,6 +125,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/layers.js"></script>
 <script src="js/app.js"></script>
 
 </body>
