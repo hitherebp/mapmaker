@@ -22,16 +22,105 @@ map.addControl(nav, 'top-right');
 
 window.draw = new MapboxDraw({ displayControlsDefault: false, userProperties: true, styles: drawStyles });
 
-// --- LOAD LAYERS (REFACTORED) ---
+// --- LOAD LAYERS ---
 map.on('load', function() {
     map.addControl(draw);
+    var layers = map.getStyle().layers;
+    var firstDrawLayerId;
+    for (var i = 0; i < layers.length; i++) { if (layers[i].id.indexOf('gl-draw') === 0) { firstDrawLayerId = layers[i].id; break; } }
+
+    map.addSource('smooth_source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addSource('snap_indicator', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+
+    map.addLayer({ "id": "visual-snap-marker", "type": "circle", "source": "snap_indicator", "paint": { "circle-radius": 8, "circle-color": "#2ecc71", "circle-stroke-width": 3, "circle-stroke-color": "#ffffff", "circle-opacity": 0.8 } });
+
+    // --- STYLES ---
+    const styles = {
+        minor:   { width: 9,  fill: 5,  color: '#d6d6d6', fillColor: '#d9d9d9' },
+        major:   { width: 12, fill: 8,  color: '#cfcfcf', fillColor: '#d9d9d9' },
+        ramp:    { width: 8,  fill: 4,  color: '#687d99', fillColor: '#90a4c2' },
+        freeway: { width: 18, fill: 14, color: '#687d99', fillColor: '#90a4c2' }
+    };
+
+    // Shared Layout Options (The Round Caps)
+    const roundLayout = { "line-cap": "round", "line-join": "round" };
+
+    // ===============================================
+    // GROUP 1: SURFACE STREETS (Bottom)
+    // ===============================================
     
-    // Call the external function from js/layers.js
-    if (window.addMapLayers) {
-        window.addMapLayers(map);
-    } else {
-        alert("Error: layers.js not loaded!");
-    }
+    // Borders
+    ['major', 'minor'].forEach(type => {
+        map.addLayer({ 
+            "id": `visual-${type}-border`, "type": "line", "source": "smooth_source", 
+            "layout": roundLayout, // <--- Added Round Caps
+            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
+            "paint": { "line-color": styles[type].color, "line-width": styles[type].width } 
+        }, firstDrawLayerId);
+    });
+
+    // Fills
+    ['major', 'minor'].forEach(type => {
+        map.addLayer({ 
+            "id": `visual-${type}-fill`, "type": "line", "source": "smooth_source", 
+            "layout": roundLayout, // <--- Added Round Caps
+            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
+            "paint": { "line-color": styles[type].fillColor, "line-width": styles[type].fill } 
+        }, firstDrawLayerId);
+    });
+
+
+    // ===============================================
+    // GROUP 2: HIGHWAY INFRASTRUCTURE (Middle)
+    // ===============================================
+
+    // Borders
+    ['freeway', 'ramp'].forEach(type => {
+        map.addLayer({ 
+            "id": `visual-${type}-border`, "type": "line", "source": "smooth_source", 
+            "layout": roundLayout,
+            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
+            "paint": { "line-color": styles[type].color, "line-width": styles[type].width } 
+        }, firstDrawLayerId);
+    });
+
+    // Freeway Fill
+    map.addLayer({ 
+        "id": "visual-freeway-fill", "type": "line", "source": "smooth_source", 
+        "layout": roundLayout,
+        "filter": ["all", ["==", "roadType", "freeway"], ["!=", "isBridge", true]], 
+        "paint": { "line-color": styles.freeway.fillColor, "line-width": styles.freeway.fill } 
+    }, firstDrawLayerId);
+
+    // Ramp Fill (Top of Ground)
+    map.addLayer({ 
+        "id": "visual-ramp-fill", "type": "line", "source": "smooth_source", 
+        "layout": roundLayout,
+        "filter": ["all", ["==", "roadType", "ramp"], ["!=", "isBridge", true]], 
+        "paint": { "line-color": styles.ramp.fillColor, "line-width": styles.ramp.fill } 
+    }, firstDrawLayerId);
+
+
+    // ===============================================
+    // GROUP 3: BRIDGES (Top)
+    // ===============================================
+    
+    const allTypes = ['minor', 'major', 'ramp', 'freeway'];
+    allTypes.forEach(t => {
+        map.addLayer({ 
+            "id": `bridge-${t}-border`, "type": "line", "source": "smooth_source", 
+            "layout": roundLayout,
+            "filter": ["all", ["==", "roadType", t], ["==", "isBridge", true]], 
+            "paint": { "line-color": "#506070", "line-width": styles[t].width + 2 } 
+        }, firstDrawLayerId);
+        
+        map.addLayer({ 
+            "id": `bridge-${t}-fill`, "type": "line", "source": "smooth_source", 
+            "layout": roundLayout,
+            "filter": ["all", ["==", "roadType", t], ["==", "isBridge", true]], 
+            "paint": { "line-color": styles[t].fillColor, "line-width": styles[t].fill + 2 } 
+        }, firstDrawLayerId);
+    });
     
     saveState();
 });
