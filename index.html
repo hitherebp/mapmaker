@@ -16,8 +16,9 @@
 <body>
 
     <div id="sidebar">
-        <h2 style="margin:0; color:white;">MapMaker</h2>
-        <p style="color:#bdc3c7; font-size:12px; margin-bottom:15px;">v0.1 Test</p>
+        <input type="text" id="map-title" class="map-title-input" value="Untitled City" oninput="document.title = this.value">
+        <p class="version-tag">v78: Naming & Saving</p>
+
 
         <div class="control-row">
             <button class="btn-undo" onclick="undo()"><span>↩️</span> Undo</button>

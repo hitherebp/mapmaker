@@ -31,6 +31,33 @@ body {
     -webkit-overflow-scrolling: touch; 
 }
 
+/* SIDEBAR HEADER */
+.map-title-input {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent; /* Hidden underline */
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    width: 100%;
+    margin: 0;
+    padding: 5px 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: border-color 0.2s;
+}
+
+.map-title-input:focus {
+    outline: none;
+    border-bottom: 2px solid #3498db; /* Blue underline when typing */
+    background: rgba(255,255,255,0.05);
+}
+
+.version-tag {
+    color: #bdc3c7; 
+    font-size: 12px; 
+    margin-bottom: 15px;
+}
+
 /* --- 3. MAIN CONTENT WRAPPER --- */
 #main-content {
     flex: 1; 

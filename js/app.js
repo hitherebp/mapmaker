@@ -514,5 +514,60 @@ window.saveState = function() {
 }
 window.undo = function() { if (historyStep > 0) { historyStep--; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); } }
 window.redo = function() { if (historyStep < historyStack.length - 1) { historyStep++; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); } }
-function downloadMap() { var data = draw.getAll(); if (data.features.length === 0) { alert("Map is empty!"); return; } var blob = new Blob([JSON.stringify(data)], {type: "application/geo+json"}); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "mapmaker.geojson"; a.click(); }
-function loadMap(input) { var file = input.files[0]; if (!file) return; var reader = new FileReader(); reader.onload = function(e) { try { var json = JSON.parse(e.target.result); draw.deleteAll(); draw.add(json); updateVisuals(); saveState(); var bounds = new maplibregl.LngLatBounds(); json.features.forEach(f => { if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates); else f.geometry.coordinates.forEach(c => bounds.extend(c)); }); if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 }); } catch (error) { alert("Error: " + error); } }; reader.readAsText(file); input.value = ''; }
+
+function downloadMap() {
+    var data = draw.getAll();
+    if (data.features.length === 0) { alert("Map is empty!"); return; }
+    
+    // 1. Get Title from Input
+    var titleInput = document.getElementById('map-title').value;
+    var safeTitle = titleInput.trim() || "mapmaker";
+    
+    // 2. Create Filename (Sanitize: "New York City!" -> "new-york-city")
+    var filename = safeTitle.replace(/[^a-z0-9]/gi, '-').toLowerCase() + ".geojson";
+
+    // 3. Download
+    var blob = new Blob([JSON.stringify(data)], {type: "application/geo+json"});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+}
+
+function loadMap(input) {
+    var file = input.files[0];
+    if (!file) return;
+
+    // 1. Auto-fill Title from Filename
+    // Remove extension (.geojson) and replace dashes with spaces
+    var cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/-/g, " ");
+    
+    // Capitalize Words (Optional polish)
+    cleanName = cleanName.replace(/\b\w/g, l => l.toUpperCase());
+    
+    document.getElementById('map-title').value = cleanName;
+    document.title = cleanName; // Update Browser Tab
+
+    // 2. Read File
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var json = JSON.parse(e.target.result);
+            draw.deleteAll();
+            draw.add(json);
+            updateVisuals();
+            saveState();
+            
+            // Zoom to fit
+            var bounds = new maplibregl.LngLatBounds();
+            json.features.forEach(f => {
+                if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates);
+                else f.geometry.coordinates.forEach(c => bounds.extend(c));
+            });
+            if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 });
+            
+        } catch (error) { alert("Error: " + error); }
+    };
+    reader.readAsText(file);
+    input.value = '';
+}
