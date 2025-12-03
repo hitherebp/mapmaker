@@ -69,8 +69,15 @@
         <button id="tool-minor" class="btn-minor" onclick="startDrawing('minor')"><span>🏘️</span> Minor Street</button>
         
         <div class="toggle-container">
-            <input type="checkbox" id="smooth-toggle" style="width:20px; height:20px;" checked>
-            <label for="smooth-toggle">New: Auto-Smooth</label>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <input type="checkbox" id="smooth-toggle" style="width:16px; height:16px;" checked>
+                <label for="smooth-toggle" style="font-size:12px;">Smooth</label>
+            </div>
+            
+            <div style="display:flex; align-items:center; gap:5px; margin-left:10px; border-left:1px solid #555; padding-left:10px;">
+                <input type="checkbox" id="snap-toggle" style="width:16px; height:16px;" checked>
+                <label for="snap-toggle" style="font-size:12px;">🧲 Snap</label>
+            </div>
         </div>
     
         <button id="btn-delete" class="btn-delete" onclick="smartDelete()"><span>🗑️</span> Delete Selected</button>

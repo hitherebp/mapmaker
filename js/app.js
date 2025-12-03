@@ -22,54 +22,102 @@ map.addControl(nav, 'top-right');
 
 window.draw = new MapboxDraw({ displayControlsDefault: false, userProperties: true, styles: drawStyles });
 
-// --- LOAD LAYERS (THE BRIDGE STACK) ---
+// --- LOAD LAYERS ---
 map.on('load', function() {
     map.addControl(draw);
-    
-    // Position helper
     var layers = map.getStyle().layers;
     var firstDrawLayerId;
     for (var i = 0; i < layers.length; i++) { if (layers[i].id.indexOf('gl-draw') === 0) { firstDrawLayerId = layers[i].id; break; } }
 
     map.addSource('smooth_source', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addSource('snap_indicator', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-    // --- LEVEL 0: GROUND (Filter: "!has isBridge") ---
-    // We add !has isBridge to ensure ground roads don't render twice
-    
-    // Minor
-    map.addLayer({ "id": "visual-minor-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "minor"], ["!=", "isBridge", true]], "paint": { "line-color": "#d6d6d6", "line-width": 6 } }, firstDrawLayerId);
-    map.addLayer({ "id": "visual-minor-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "minor"], ["!=", "isBridge", true]], "paint": { "line-color": "#ffffff", "line-width": 3 } }, firstDrawLayerId);
-    
-    // Major
-    map.addLayer({ "id": "visual-major-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "major"], ["!=", "isBridge", true]], "paint": { "line-color": "#cfcfcf", "line-width": 12 } }, firstDrawLayerId);
-    map.addLayer({ "id": "visual-major-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "major"], ["!=", "isBridge", true]], "paint": { "line-color": "#ffffff", "line-width": 8 } }, firstDrawLayerId);
-    
-    // Ramp (Ground Level)
-    map.addLayer({ "id": "visual-ramp-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "ramp"], ["!=", "isBridge", true]], "paint": { "line-color": "#687d99", "line-width": 8 } }, firstDrawLayerId);
-    map.addLayer({ "id": "visual-ramp-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "ramp"], ["!=", "isBridge", true]], "paint": { "line-color": "#ffffff", "line-width": 4 } }, firstDrawLayerId);
-    
-    // Freeway (Ground Level)
-    map.addLayer({ "id": "visual-freeway-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "freeway"], ["!=", "isBridge", true]], "paint": { "line-color": "#687d99", "line-width": 18 } }, firstDrawLayerId);
-    map.addLayer({ "id": "visual-freeway-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "freeway"], ["!=", "isBridge", true]], "paint": { "line-color": "#90a4c2", "line-width": 14 } }, firstDrawLayerId);
+    map.addLayer({ "id": "visual-snap-marker", "type": "circle", "source": "snap_indicator", "paint": { "circle-radius": 8, "circle-color": "#2ecc71", "circle-stroke-width": 3, "circle-stroke-color": "#ffffff", "circle-opacity": 0.8 } });
 
-    // --- LEVEL 1: BRIDGES (Filter: "isBridge == true") ---
-    // These render ON TOP of ground freeways
+    // --- STYLES ---
+    const styles = {
+        minor:   { width: 9,  fill: 5,  color: '#d6d6d6', fillColor: '#d9d9d9' },
+        major:   { width: 12, fill: 8,  color: '#cfcfcf', fillColor: '#d9d9d9' },
+        ramp:    { width: 8,  fill: 4,  color: '#687d99', fillColor: '#90a4c2' },
+        freeway: { width: 18, fill: 14, color: '#687d99', fillColor: '#90a4c2' }
+    };
+
+    // ===============================================
+    // GROUP 1: SURFACE STREETS (The Foundation)
+    // These sit at the very bottom.
+    // ===============================================
     
-    // Bridge Minor
-    map.addLayer({ "id": "bridge-minor-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "minor"], ["==", "isBridge", true]], "paint": { "line-color": "#b0b0b0", "line-width": 8 } }, firstDrawLayerId);
-    map.addLayer({ "id": "bridge-minor-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "minor"], ["==", "isBridge", true]], "paint": { "line-color": "#ffffff", "line-width": 4 } }, firstDrawLayerId);
+    // 1. Borders
+    ['major', 'minor'].forEach(type => {
+        map.addLayer({ 
+            "id": `visual-${type}-border`, "type": "line", "source": "smooth_source", 
+            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
+            "paint": { "line-color": styles[type].color, "line-width": styles[type].width } 
+        }, firstDrawLayerId);
+    });
 
-    // Bridge Major
-    map.addLayer({ "id": "bridge-major-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "major"], ["==", "isBridge", true]], "paint": { "line-color": "#a0a0a0", "line-width": 14 } }, firstDrawLayerId);
-    map.addLayer({ "id": "bridge-major-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "major"], ["==", "isBridge", true]], "paint": { "line-color": "#ffffff", "line-width": 10 } }, firstDrawLayerId);
+    // 2. Fills
+    ['major', 'minor'].forEach(type => {
+        map.addLayer({ 
+            "id": `visual-${type}-fill`, "type": "line", "source": "smooth_source", 
+            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
+            "paint": { "line-color": styles[type].fillColor, "line-width": styles[type].fill } 
+        }, firstDrawLayerId);
+    });
 
-    // Bridge Ramp (Ramp Overpass)
-    map.addLayer({ "id": "bridge-ramp-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "ramp"], ["==", "isBridge", true]], "paint": { "line-color": "#506070", "line-width": 10 } }, firstDrawLayerId);
-    map.addLayer({ "id": "bridge-ramp-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "ramp"], ["==", "isBridge", true]], "paint": { "line-color": "#ffffff", "line-width": 6 } }, firstDrawLayerId);
 
-    // Bridge Freeway (Flyover)
-    map.addLayer({ "id": "bridge-freeway-border", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "freeway"], ["==", "isBridge", true]], "paint": { "line-color": "#506070", "line-width": 20 } }, firstDrawLayerId);
-    map.addLayer({ "id": "bridge-freeway-fill", "type": "line", "source": "smooth_source", "filter": ["all", ["==", "roadType", "freeway"], ["==", "isBridge", true]], "paint": { "line-color": "#90a4c2", "line-width": 16 } }, firstDrawLayerId);
+    // ===============================================
+    // GROUP 2: HIGHWAY INFRASTRUCTURE (The Overlords)
+    // These sit ON TOP of surface streets.
+    // ===============================================
+
+    // 3. Highway Borders (Freeway + Ramp)
+    // Drawing these *after* Surface Fills ensures the Freeway outline cuts off the street below.
+    ['freeway', 'ramp'].forEach(type => {
+        map.addLayer({ 
+            "id": `visual-${type}-border`, "type": "line", "source": "smooth_source", 
+            "filter": ["all", ["==", "roadType", type], ["!=", "isBridge", true]], 
+            "paint": { "line-color": styles[type].color, "line-width": styles[type].width } 
+        }, firstDrawLayerId);
+    });
+
+    // 4. Freeway Fill (The Blue Pavement)
+    map.addLayer({ 
+        "id": "visual-freeway-fill", "type": "line", "source": "smooth_source", 
+        "filter": ["all", ["==", "roadType", "freeway"], ["!=", "isBridge", true]], 
+        "paint": { "line-color": styles.freeway.fillColor, "line-width": styles.freeway.fill } 
+    }, firstDrawLayerId);
+
+    // 5. Ramp Fill (The Merge Lane)
+    // CRITICAL: This draws LAST. The white ramp pavement covers the Freeway Border,
+    // creating the seamless "Intersection" look while keeping the Freeway visually higher than streets.
+    map.addLayer({ 
+        "id": "visual-ramp-fill", "type": "line", "source": "smooth_source", 
+        "filter": ["all", ["==", "roadType", "ramp"], ["!=", "isBridge", true]], 
+        "paint": { "line-color": styles.ramp.fillColor, "line-width": styles.ramp.fill } 
+    }, firstDrawLayerId);
+
+
+    // ===============================================
+    // GROUP 3: BRIDGES (The Flyovers)
+    // ===============================================
+    
+    const allTypes = ['minor', 'major', 'ramp', 'freeway'];
+    allTypes.forEach(t => {
+        // Bridge Border
+        map.addLayer({ 
+            "id": `bridge-${t}-border`, "type": "line", "source": "smooth_source", 
+            "filter": ["all", ["==", "roadType", t], ["==", "isBridge", true]], 
+            "paint": { "line-color": "#506070", "line-width": styles[t].width + 2 } 
+        }, firstDrawLayerId);
+        
+        // Bridge Fill
+        map.addLayer({ 
+            "id": `bridge-${t}-fill`, "type": "line", "source": "smooth_source", 
+            "filter": ["all", ["==", "roadType", t], ["==", "isBridge", true]], 
+            "paint": { "line-color": styles[t].fillColor, "line-width": styles[t].fill + 2 } 
+        }, firstDrawLayerId);
+    });
     
     saveState();
 });
@@ -92,7 +140,6 @@ function setActiveButton(activeId) {
 function updateUI(id) {
     var f = draw.get(id);
     if (!f) return;
-
     var btnDelete = document.getElementById('btn-delete');
 
     if (f.geometry.type === 'LineString') {
@@ -116,13 +163,11 @@ function showRoadControls(show, feature) {
     var panel = document.getElementById('road-controls');
     panel.style.display = show ? 'block' : 'none';
     if (show && feature) {
-        // Curve Button State
         var btnCurve = document.getElementById('btn-curve-toggle');
         var isSmoothed = feature.properties.isSmoothed !== false; 
         if (isSmoothed) { btnCurve.className = "btn-mini btn-wide btn-straight"; btnCurve.innerHTML = "📏 Make Straight"; } 
         else { btnCurve.className = "btn-mini btn-wide btn-curve"; btnCurve.innerHTML = "〰️ Make Smooth"; }
 
-        // Bridge Button State
         var btnBridge = document.getElementById('btn-bridge-toggle');
         var isBridge = feature.properties.isBridge === true;
         if (isBridge) {
@@ -135,188 +180,138 @@ function showRoadControls(show, feature) {
     }
 }
 
-// --- CORE ACTIONS ---
-window.enterSelectMode = function() { draw.changeMode('simple_select'); setActiveButton('btn-select'); }
-window.startDrawing = function(type) { isLabelMode = false; currentRoadType = type; draw.changeMode('draw_line_string'); setActiveButton('tool-' + type); }
-window.activateLabelTool = function() { isLabelMode = true; draw.changeMode('draw_point'); setActiveButton('btn-label'); }
-
-// --- BRIDGE LOGIC ---
-window.toggleBridge = function() {
-    var id = window.lastSelectedId;
-    if (id) {
-        var f = draw.get(id);
-        if (f) {
-            // Toggle State
-            var currentState = f.properties.isBridge === true;
-            draw.setFeatureProperty(id, 'isBridge', !currentState);
-            
-            // Refresh UI to show new text (Ground/Bridge)
-            showRoadControls(true, draw.get(id));
-            
-            updateVisuals();
-            saveState();
-        }
+function showSnapMarker(coords) {
+    var source = map.getSource('snap_indicator');
+    if (source) {
+        source.setData({
+            type: 'FeatureCollection',
+            features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: coords } }]
+        });
+        setTimeout(() => { source.setData({ type: 'FeatureCollection', features: [] }); }, 500);
     }
 }
 
-// --- MODIFICATION FUNCTIONS (Blink Update) ---
-function updateAndSelect(feature) {
-    draw.changeMode('simple_select', { featureIds: [] }); // Deselect
-    draw.add(feature); // Update
-    setTimeout(() => {
-        if (window.lastSelectedId) {
-            draw.changeMode('simple_select', { featureIds: [window.lastSelectedId] });
-            if (feature.geometry.type === 'Point') setActiveButton('btn-label'); 
-        }
-    }, 50);
-    saveState();
-}
+// --- TOPOLOGY LOGIC (Sticky Roads) ---
 
-window.toggleLineSmoothing = function() { 
-    var id = window.lastSelectedId;
-    if (id) { 
-        var f = draw.get(id); 
-        if (f) {
-            draw.setFeatureProperty(id, 'isSmoothed', !(f.properties.isSmoothed !== false)); 
-            showRoadControls(true, draw.get(id)); 
-            updateVisuals(); 
-            saveState();
-        }
-    } 
-}
+// 1. SNAP & BIND: Connects this road to a target, saving the ID and Ratio
+function applySnapping(feature) {
+    var snapEnabled = document.getElementById('snap-toggle').checked;
+    if (!snapEnabled || feature.geometry.type !== 'LineString') return false;
 
-window.rotateLabel = function(deg) { 
-    var id = window.lastSelectedId;
-    if (id) { 
-        var f = draw.get(id); 
-        if (f) {
-            var newRot = (f.properties.rotation || 0) + deg;
-            f.properties.rotation = newRot;
-            updateAndSelect(f);
-        }
-    } 
-}
+    var allFeatures = draw.getAll().features;
+    var coords = feature.geometry.coordinates;
+    var startPt = coords[0];
+    var endPt = coords[coords.length - 1];
+    
+    var didSnap = false;
+    var snapDistance = 0.1; // 100m snap radius
 
-window.nudgeLabel = function(dx, dy) { 
-    var id = window.lastSelectedId;
-    if (id) { 
-        var f = draw.get(id); 
-        if (f) {
-            var currentOffset = f.properties.offset || [0, -1.5];
-            f.properties.offset = [currentOffset[0] + dx/10, currentOffset[1] + dy/10];
-            updateAndSelect(f);
-        }
-    } 
-}
+    // Reset connections (Assume disconnected unless we snap below)
+    feature.properties.connectedStartId = null;
+    feature.properties.connectedStartRatio = null;
+    feature.properties.connectedEndId = null;
+    feature.properties.connectedEndRatio = null;
 
-window.editLabelText = function() { 
-    var id = window.lastSelectedId;
-    if (id) { 
-        var f = draw.get(id); 
-        if (f) {
-            var n = prompt("Edit label:", f.properties.name); 
-            if(n) { f.properties.name = n; updateAndSelect(f); } 
-        }
-    } 
-}
+    function getSnapTarget(point) {
+        var bestSnap = null;
+        var bestTarget = null;
+        var bestRatio = null;
+        var minDist = Infinity;
 
-window.smartDelete = function() {
-    var pts = draw.getSelectedPoints();
-    var ids = draw.getSelectedIds();
-    if (pts.features.length > 0) draw.trash();
-    else if (ids.length > 0) { draw.delete(ids); window.lastSelectedId = null; resetUI(); }
-    else if (window.lastSelectedId) { draw.delete([window.lastSelectedId]); window.lastSelectedId = null; resetUI(); }
-    updateVisuals(); saveState();
-}
+        allFeatures.forEach(other => {
+            if (other.id === feature.id) return; 
+            if (other.geometry.type !== 'LineString') return; 
 
-function resetUI() {
-    showTextControls(false); showRoadControls(false); document.getElementById('debug-info').innerText = "Points: 0";
-    var btnDelete = document.getElementById('btn-delete');
-    btnDelete.innerHTML = "<span>🗑️</span> Delete Selected"; btnDelete.classList.remove('point-mode');
-}
+            var snapped = turf.nearestPointOnLine(other, point);
+            var dist = snapped.properties.dist; 
 
-// --- STANDARD EVENTS & RENDERER ---
-map.on('click', function(e) {
-    if (draw.getMode() === 'simple_select' || draw.getMode() === 'direct_select') {
-        var clickedFeatures = draw.getFeatureIdsAt(e.point);
-        if (clickedFeatures.length === 0) { window.lastSelectedId = null; resetUI(); }
-    }
-});
-
-map.on('draw.selectionchange', function(e) {
-    var ids = draw.getSelectedIds();
-    if (ids.length > 0) { window.lastSelectedId = ids[0]; updateUI(ids[0]); }
-    else { if (window.lastSelectedId !== null) return; resetUI(); }
-});
-
-map.on('draw.create', function(e) {
-    var f = e.features[0];
-    if (f.geometry.type === 'Point' && isLabelMode) {
-        var name = prompt("Enter label text:", "Street Name");
-        if (name) {
-            draw.setFeatureProperty(f.id, 'isLabel', true);
-            draw.setFeatureProperty(f.id, 'name', name);
-            draw.setFeatureProperty(f.id, 'rotation', 0);
-            draw.setFeatureProperty(f.id, 'offset', [0, -1.5]);
-            // Smart Anchor
-            var pt = f.geometry.coordinates;
-            var linkedId = null;
-            var linkedRatio = 0;
-            Object.keys(smoothMap).forEach(roadId => {
-                var line = smoothMap[roadId];
-                if (line) {
-                    var snapped = turf.nearestPointOnLine(line, pt);
-                    if (snapped.properties.dist < 0.05) { 
-                        linkedId = roadId;
-                        var len = turf.length(line);
-                        linkedRatio = snapped.properties.location / len;
-                    }
+            if (dist < minDist && dist < snapDistance) { 
+                minDist = dist;
+                bestSnap = snapped.geometry.coordinates;
+                bestTarget = other;
+                
+                // Calculate Ratio (Distance along line / Total Length)
+                var len = turf.length(other);
+                if (len > 0) {
+                    bestRatio = snapped.properties.location / len;
+                } else {
+                    bestRatio = 0;
                 }
-            });
-            if (linkedId) { draw.setFeatureProperty(f.id, 'linkedRoadId', linkedId); draw.setFeatureProperty(f.id, 'linkedRatio', linkedRatio); }
-            saveState();
-            window.lastSelectedId = f.id;
-            updateUI(f.id);
-        } else { draw.delete(f.id); }
-        isLabelMode = false;
-        setActiveButton('btn-select');
-    } else if (f.geometry.type === 'LineString') {
-        draw.setFeatureProperty(f.id, 'roadType', currentRoadType);
-        var autoSmooth = document.getElementById('smooth-toggle').checked;
-        draw.setFeatureProperty(f.id, 'isSmoothed', autoSmooth);
-        setTimeout(() => { updateVisuals(); saveState(); }, 10);
+            }
+        });
+        return { coords: bestSnap, targetId: bestTarget ? bestTarget.id : null, ratio: bestRatio };
     }
-});
 
-map.on('draw.update', function(e) {
-    updateVisuals(); 
-    if (e.features.length > 0 && e.features[0].geometry.type === 'LineString') {
-        var roadId = e.features[0].id;
-        setTimeout(() => {
-            var smoothLine = smoothMap[roadId];
-            if (!smoothLine) return;
-            var allLabels = draw.getAll().features.filter(f => f.properties.linkedRoadId === roadId);
-            allLabels.forEach(lbl => {
-                var ratio = lbl.properties.linkedRatio;
-                if (ratio >= 0 && ratio <= 1) {
-                    var len = turf.length(smoothLine);
-                    var newPos = turf.along(smoothLine, len * ratio);
-                    draw.add({ id: lbl.id, type: 'Feature', properties: lbl.properties, geometry: newPos.geometry });
-                }
-            });
-        }, 20);
+    // Snap START
+    var startInfo = getSnapTarget(startPt);
+    if (startInfo.coords) {
+        coords[0] = startInfo.coords;
+        feature.properties.connectedStartId = startInfo.targetId;
+        feature.properties.connectedStartRatio = startInfo.ratio;
+        didSnap = true;
+        showSnapMarker(startInfo.coords);
     }
-});
 
-map.on('mouseup', function() { if (draw.getMode() === 'direct_select' || draw.getMode() === 'simple_select') saveState(); });
-map.on('draw.delete', function(){ updateVisuals(); saveState(); });
+    // Snap END
+    var endInfo = getSnapTarget(endPt);
+    if (endInfo.coords) {
+        coords[coords.length - 1] = endInfo.coords;
+        feature.properties.connectedEndId = endInfo.targetId;
+        feature.properties.connectedEndRatio = endInfo.ratio;
+        didSnap = true;
+        showSnapMarker(endInfo.coords);
+    }
 
-document.addEventListener('keydown', function(e) { 
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
-    if (e.key === 'Delete' || e.key === 'Backspace') smartDelete(); 
-});
+    if (didSnap) {
+        feature.geometry.coordinates = coords;
+        draw.add(feature); // Updates the geometry AND properties
+    }
+    return didSnap;
+}
 
+// 2. UPDATE CHILDREN: When a parent moves, drag its connected children
+function updateConnectedRoads(parentFeature) {
+    if (parentFeature.geometry.type !== 'LineString') return;
+
+    var allFeatures = draw.getAll().features;
+    var parentId = parentFeature.id;
+    var parentLen = turf.length(parentFeature);
+
+    allFeatures.forEach(child => {
+        if (child.id === parentId) return; // Skip self
+        if (child.geometry.type !== 'LineString') return; // Skip non-roads
+
+        var needsUpdate = false;
+        var coords = child.geometry.coordinates;
+
+        // Check Start Connection
+        if (child.properties.connectedStartId === parentId) {
+            var ratio = child.properties.connectedStartRatio;
+            if (ratio !== undefined && ratio !== null) {
+                var newPt = turf.along(parentFeature, parentLen * ratio).geometry.coordinates;
+                coords[0] = newPt;
+                needsUpdate = true;
+            }
+        }
+
+        // Check End Connection
+        if (child.properties.connectedEndId === parentId) {
+            var ratio = child.properties.connectedEndRatio;
+            if (ratio !== undefined && ratio !== null) {
+                var newPt = turf.along(parentFeature, parentLen * ratio).geometry.coordinates;
+                coords[coords.length - 1] = newPt;
+                needsUpdate = true;
+            }
+        }
+
+        if (needsUpdate) {
+            child.geometry.coordinates = coords;
+            draw.add(child); // Push update to map
+        }
+    });
+}
+
+// --- RENDERER ---
 window.updateVisuals = function() {
     var rawData = draw.getAll();
     var smoothFeatures = [];
@@ -324,9 +319,8 @@ window.updateVisuals = function() {
 
     rawData.features.forEach(f => {
         if (f.geometry.type === 'LineString') {
-            var rType = f.properties.roadType || currentRoadType; 
+            var rType = f.properties.roadType || 'major';
             var isSmoothed = f.properties.isSmoothed !== false; 
-            // Pass bridge property to visual layer
             var isBridge = f.properties.isBridge === true; 
             
             var displayFeat = JSON.parse(JSON.stringify(f));
@@ -355,33 +349,170 @@ window.updateVisuals = function() {
     if (source) source.setData({ type: 'FeatureCollection', features: smoothFeatures });
 }
 
+// --- CORE ACTIONS ---
+window.enterSelectMode = function() { draw.changeMode('simple_select'); setActiveButton('btn-select'); }
+window.startDrawing = function(type) { isLabelMode = false; currentRoadType = type; draw.changeMode('draw_line_string'); setActiveButton('tool-' + type); }
+window.activateLabelTool = function() { isLabelMode = true; draw.changeMode('draw_point'); setActiveButton('btn-label'); }
+
+window.toggleBridge = function() {
+    var id = window.lastSelectedId;
+    if (id) {
+        var f = draw.get(id);
+        if (f) {
+            var currentState = f.properties.isBridge === true;
+            draw.setFeatureProperty(id, 'isBridge', !currentState);
+            showRoadControls(true, draw.get(id));
+            updateVisuals();
+            saveState();
+        }
+    }
+}
+
+// --- MODIFICATION FUNCTIONS ---
+function updateAndSelect(feature) {
+    draw.changeMode('simple_select', { featureIds: [] });
+    draw.add(feature);
+    setTimeout(() => {
+        if (window.lastSelectedId) {
+            draw.changeMode('simple_select', { featureIds: [window.lastSelectedId] });
+            if (feature.geometry.type === 'Point') setActiveButton('btn-label'); 
+        }
+    }, 50);
+    saveState();
+}
+
+window.toggleLineSmoothing = function() { 
+    var id = window.lastSelectedId;
+    if (id) { 
+        var f = draw.get(id); 
+        if (f) {
+            draw.setFeatureProperty(id, 'isSmoothed', !(f.properties.isSmoothed !== false)); 
+            showRoadControls(true, draw.get(id)); 
+            updateVisuals(); 
+            saveState();
+        }
+    } 
+}
+
+window.rotateLabel = function(deg) { 
+    var id = window.lastSelectedId;
+    if (id) { var f = draw.get(id); if (f) { var newRot = (f.properties.rotation || 0) + deg; f.properties.rotation = newRot; updateAndSelect(f); } } 
+}
+window.nudgeLabel = function(dx, dy) { 
+    var id = window.lastSelectedId;
+    if (id) { var f = draw.get(id); if (f) { var c = f.properties.offset || [0, -1.5]; f.properties.offset = [c[0] + dx/10, c[1] + dy/10]; updateAndSelect(f); } } 
+}
+window.editLabelText = function() { 
+    var id = window.lastSelectedId;
+    if (id) { var f = draw.get(id); if (f) { var n = prompt("Edit label:", f.properties.name); if(n) { f.properties.name = n; updateAndSelect(f); } } } 
+}
+
+window.smartDelete = function() {
+    var pts = draw.getSelectedPoints();
+    var ids = draw.getSelectedIds();
+    if (pts.features.length > 0) draw.trash();
+    else if (ids.length > 0) { draw.delete(ids); window.lastSelectedId = null; resetUI(); }
+    else if (window.lastSelectedId) { draw.delete([window.lastSelectedId]); window.lastSelectedId = null; resetUI(); }
+    updateVisuals(); saveState();
+}
+
+function resetUI() {
+    showTextControls(false); showRoadControls(false); document.getElementById('debug-info').innerText = "Points: 0";
+    var btnDelete = document.getElementById('btn-delete');
+    btnDelete.innerHTML = "<span>🗑️</span> Delete Selected"; btnDelete.classList.remove('point-mode');
+}
+
+// --- EVENTS ---
+map.on('click', function(e) {
+    if (draw.getMode() === 'simple_select' || draw.getMode() === 'direct_select') {
+        var clickedFeatures = draw.getFeatureIdsAt(e.point);
+        if (clickedFeatures.length === 0) { window.lastSelectedId = null; resetUI(); }
+    }
+});
+
+map.on('draw.selectionchange', function(e) {
+    var ids = draw.getSelectedIds();
+    if (ids.length > 0) { window.lastSelectedId = ids[0]; updateUI(ids[0]); }
+    else { if (window.lastSelectedId !== null) return; resetUI(); }
+});
+
+map.on('draw.create', function(e) {
+    var f = e.features[0];
+    if (f.geometry.type === 'Point' && isLabelMode) {
+        var name = prompt("Enter label text:", "Street Name");
+        if (name) {
+            draw.setFeatureProperty(f.id, 'isLabel', true);
+            draw.setFeatureProperty(f.id, 'name', name);
+            draw.setFeatureProperty(f.id, 'rotation', 0);
+            draw.setFeatureProperty(f.id, 'offset', [0, -1.5]);
+            var pt = f.geometry.coordinates; var linkedId = null; var linkedRatio = 0;
+            Object.keys(smoothMap).forEach(roadId => {
+                var line = smoothMap[roadId];
+                if (line) {
+                    var snapped = turf.nearestPointOnLine(line, pt);
+                    if (snapped.properties.dist < 0.05) { linkedId = roadId; var len = turf.length(line); linkedRatio = snapped.properties.location / len; }
+                }
+            });
+            if (linkedId) { draw.setFeatureProperty(f.id, 'linkedRoadId', linkedId); draw.setFeatureProperty(f.id, 'linkedRatio', linkedRatio); }
+            saveState(); window.lastSelectedId = f.id; updateUI(f.id);
+        } else { draw.delete(f.id); }
+        isLabelMode = false; setActiveButton('btn-select');
+    } else if (f.geometry.type === 'LineString') {
+        var rType = f.properties.roadType || currentRoadType;
+        var autoSmooth = document.getElementById('smooth-toggle').checked;
+        f.properties.roadType = rType; f.properties.isSmoothed = autoSmooth;
+        draw.setFeatureProperty(f.id, 'roadType', rType); draw.setFeatureProperty(f.id, 'isSmoothed', autoSmooth);
+        applySnapping(f); setTimeout(() => { updateVisuals(); saveState(); }, 10);
+    }
+});
+
+map.on('draw.update', function(e) {
+    // 1. Handle Dragging a Single Feature
+    if (e.features.length > 0) {
+        var f = e.features[0];
+        
+        // Attempt new Snap
+        applySnapping(f); 
+        
+        // Push changes to children (Sticky Roads)
+        updateConnectedRoads(f);
+    }
+
+    updateVisuals(); 
+    if (e.features.length > 0 && e.features[0].geometry.type === 'LineString') {
+        var roadId = e.features[0].id;
+        setTimeout(() => {
+            var smoothLine = smoothMap[roadId];
+            if (!smoothLine) return;
+            var allLabels = draw.getAll().features.filter(f => f.properties.linkedRoadId === roadId);
+            allLabels.forEach(lbl => {
+                var ratio = lbl.properties.linkedRatio;
+                if (ratio >= 0 && ratio <= 1) {
+                    var len = turf.length(smoothLine);
+                    var newPos = turf.along(smoothLine, len * ratio);
+                    draw.add({ id: lbl.id, type: 'Feature', properties: lbl.properties, geometry: newPos.geometry });
+                }
+            });
+        }, 20);
+    }
+});
+
+map.on('mouseup', function() { if (draw.getMode() === 'direct_select' || draw.getMode() === 'simple_select') saveState(); });
+map.on('draw.delete', function(){ updateVisuals(); saveState(); });
+
+document.addEventListener('keydown', function(e) { 
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
+    if (e.key === 'Delete' || e.key === 'Backspace') smartDelete(); 
+});
+
 window.saveState = function() {
     if (historyStep < historyStack.length - 1) historyStack = historyStack.slice(0, historyStep + 1);
     historyStack.push(JSON.stringify(draw.getAll()));
     historyStep++;
     if (historyStack.length > 20) { historyStack.shift(); historyStep--; }
 }
-
-window.undo = function() {
-    if (historyStep > 0) { historyStep--; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); }
-}
-window.redo = function() {
-    if (historyStep < historyStack.length - 1) { historyStep++; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); }
-}
-function downloadMap() {
-    var data = draw.getAll();
-    if (data.features.length === 0) { alert("Map is empty!"); return; }
-    var blob = new Blob([JSON.stringify(data)], {type: "application/geo+json"});
-    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "mapmaker.geojson"; a.click();
-}
-function loadMap(input) {
-    var file = input.files[0]; if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        try { var json = JSON.parse(e.target.result); draw.deleteAll(); draw.add(json); updateVisuals(); saveState();
-            var bounds = new maplibregl.LngLatBounds();
-            json.features.forEach(f => { if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates); else f.geometry.coordinates.forEach(c => bounds.extend(c)); });
-            if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 });
-        } catch (error) { alert("Error: " + error); }
-    }; reader.readAsText(file); input.value = '';
-}
+window.undo = function() { if (historyStep > 0) { historyStep--; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); } }
+window.redo = function() { if (historyStep < historyStack.length - 1) { historyStep++; draw.set(JSON.parse(historyStack[historyStep])); updateVisuals(); } }
+function downloadMap() { var data = draw.getAll(); if (data.features.length === 0) { alert("Map is empty!"); return; } var blob = new Blob([JSON.stringify(data)], {type: "application/geo+json"}); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "mapmaker.geojson"; a.click(); }
+function loadMap(input) { var file = input.files[0]; if (!file) return; var reader = new FileReader(); reader.onload = function(e) { try { var json = JSON.parse(e.target.result); draw.deleteAll(); draw.add(json); updateVisuals(); saveState(); var bounds = new maplibregl.LngLatBounds(); json.features.forEach(f => { if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates); else f.geometry.coordinates.forEach(c => bounds.extend(c)); }); if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 }); } catch (error) { alert("Error: " + error); } }; reader.readAsText(file); input.value = ''; }
