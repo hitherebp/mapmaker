@@ -126,12 +126,49 @@ button:active { transform: scale(0.98); }
     width: 48%; /* Split the row */
 }
 
-/* Ensure they sit side-by-side */
+/* ROW LAYOUTS */
 .control-row { 
     display: flex; 
-    justify-content: space-between; 
-    gap: 4%; 
+    justify-content: space-between; /* Default: Push to edges (Good for Undo/Redo) */
+    gap: 5px; 
     margin-bottom: 8px; 
+}
+
+/* NEW: Force buttons to cluster in the center (For Arrows) */
+.row-center {
+    justify-content: center !important;
+}
+
+/* BUTTON SIZES */
+.btn-mini { 
+    width: 34px; 
+    height: 34px; 
+    padding: 0; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    background: #34495e; 
+    font-size: 16px; 
+    border: 1px solid #555; 
+    cursor: pointer; 
+    color: white; 
+    border-radius: 4px;
+}
+.btn-mini:hover { background: #4e6a85; }
+
+/* --- THE FIX: ROBUST WIDE BUTTON --- */
+.btn-wide { 
+    width: 100% !important;        /* Force full width */
+    height: auto !important;       /* Allow height to fit text */
+    min-height: 44px;              /* Good touch target size */
+    padding: 8px 16px !important;  /* Restore padding */
+    aspect-ratio: unset !important;/* Stop it from being a square */
+    
+    display: flex !important;
+    flex-direction: row !important; /* Icon left, Text right */
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px; /* Space between icon and text */
 }
 
 .btn-label { background-color: #9b59b6; color: white; }

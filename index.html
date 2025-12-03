@@ -35,19 +35,24 @@
     
         <div id="text-controls" class="context-menu">
             <div class="control-label">Move</div>
-            <div class="control-row">
+            
+            <div class="control-row row-center">
                 <button class="btn-mini" onclick="nudgeLabel(0, -5)">⬆️</button>
             </div>
-            <div class="control-row">
+            
+            <div class="control-row row-center">
                 <button class="btn-mini" onclick="nudgeLabel(-5, 0)">⬅️</button>
                 <button class="btn-mini" onclick="nudgeLabel(0, 5)">⬇️</button>
                 <button class="btn-mini" onclick="nudgeLabel(5, 0)">➡️</button>
             </div>
+            
             <div class="control-label">Rotate</div>
-            <div class="control-row">
+            
+            <div class="control-row row-center">
                 <button class="btn-mini" onclick="rotateLabel(-15)">↺</button>
                 <button class="btn-mini" onclick="rotateLabel(15)">↻</button>
             </div>
+            
             <div class="control-row">
                 <button class="btn-mini btn-wide" onclick="editLabelText()">✎ Edit Text</button>
             </div>

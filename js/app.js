@@ -4,6 +4,7 @@ window.isLabelMode = false;
 window.smoothMap = {}; 
 window.historyStack = [];
 window.historyStep = -1;
+window.lastSelectedId = null; // Sticky memory variable
 
 // --- MAP INIT ---
 window.map = new maplibregl.Map({
@@ -49,11 +50,9 @@ map.on('mousemove', function(e) {
     else map.getCanvas().style.cursor = ''; 
 });
 
-// --- HELPER: SET ACTIVE BUTTON ---
+// --- HELPER: HIGHLIGHT BUTTONS ---
 function setActiveButton(activeId) {
-    // 1. Remove from all
     document.querySelectorAll('button').forEach(b => b.classList.remove('active-tool'));
-    // 2. Add to target
     if(activeId) {
         const btn = document.getElementById(activeId);
         if(btn) btn.classList.add('active-tool');
@@ -70,7 +69,7 @@ window.startDrawing = function(type) {
     isLabelMode = false; 
     currentRoadType = type; 
     draw.changeMode('draw_line_string'); 
-    setActiveButton('tool-' + type); // Requires ID in HTML like id="tool-freeway"
+    setActiveButton('tool-' + type); 
 }
 
 window.activateLabelTool = function() { 
@@ -79,98 +78,191 @@ window.activateLabelTool = function() {
     setActiveButton('btn-label');
 }
 
-// ... Rest of functions (toggleLineSmoothing, rotateLabel, etc) remain the same ...
-// Including smartDelete, undo, saveState, etc.
+// ==========================================
+// === CRITICAL FIX: STICKY SELECTION LOGIC ===
+// ==========================================
 
-window.toggleLineSmoothing = function() { 
-    var ids = draw.getSelectedIds(); if (ids.length) { 
-        var f = draw.get(ids[0]); draw.setFeatureProperty(ids[0], 'isSmoothed', !(f.properties.isSmoothed !== false)); 
-        showRoadControls(true, draw.get(ids[0])); updateVisuals(); saveState();
+// 1. CLEAR MEMORY ONLY ON MAP CLICK
+// This ensures that momentary deselections (like redrawing) don't clear our memory.
+map.on('click', function(e) {
+    // Only verify clicks if we are in select mode
+    if (draw.getMode() === 'simple_select' || draw.getMode() === 'direct_select') {
+        var clickedFeatures = draw.getFeatureIdsAt(e.point);
+        
+        // If we truly clicked NOTHING (empty map background)
+        if (clickedFeatures.length === 0) {
+            window.lastSelectedId = null; // Reset Sticky Memory
+            resetUI(); // Force hide UI
+        }
+    }
+});
+
+// 2. SELECTION HANDLER
+map.on('draw.selectionchange', function(e) {
+    var ids = draw.getSelectedIds();
+    
+    if (ids.length > 0) {
+        // Valid selection: Update memory and show UI
+        window.lastSelectedId = ids[0];
+        updateUI(ids[0]);
+    } else {
+        // Selection is empty.
+        // CHECK: Is this a "Real" deselect (user clicked map) or a "Fake" one (redraw)?
+        if (window.lastSelectedId !== null) {
+            // Sticky ID still exists. This is a redraw flicker.
+            // IGNORE this event. Do NOT hide the UI.
+            return; 
+        }
+        // If we get here, it's a real deselect.
+        resetUI();
+    }
+});
+
+// UI Helper: Show controls for a feature
+function updateUI(id) {
+    var f = draw.get(id);
+    if (!f) return;
+
+    var btnDelete = document.getElementById('btn-delete');
+
+    if (f.geometry.type === 'LineString') {
+        document.getElementById('debug-info').innerText = "Points: " + f.geometry.coordinates.length;
+        showRoadControls(true, f);
+        showTextControls(false); 
+        btnDelete.innerHTML = "<span>🗑️</span> Delete Road"; 
+        btnDelete.classList.remove('point-mode');
+    } else if (f.geometry.type === 'Point' && f.properties.isLabel) {
+        showRoadControls(false);
+        showTextControls(true); 
+        btnDelete.innerHTML = "<span>📍</span> Delete Label"; 
+        btnDelete.classList.add('point-mode'); 
+    }
+    
+    // Highlight Select Button since we are selecting
+    setActiveButton('btn-select');
+}
+
+// UI Helper: Hide all controls
+function resetUI() {
+    showTextControls(false);
+    showRoadControls(false);
+    document.getElementById('debug-info').innerText = "Points: 0";
+    
+    var btnDelete = document.getElementById('btn-delete');
+    btnDelete.innerHTML = "<span>🗑️</span> Delete Selected"; 
+    btnDelete.classList.remove('point-mode');
+}
+
+// ==========================================
+// === MODIFICATION FUNCTIONS (FIXED) ===
+// ==========================================
+
+// Helper: Updates data, redraws, and restores selection
+function updateAndSelect(feature) {
+    // 1. Deselect everything (Unlocks the renderer)
+    draw.changeMode('simple_select', { featureIds: [] });
+    
+    // 2. Push the data update
+    draw.add(feature);
+    
+    // 3. Re-select after a short delay (Allows renderer to catch up)
+    setTimeout(() => {
+        // Ensure we still have a valid ID to grab
+        if (window.lastSelectedId) {
+            draw.changeMode('simple_select', { featureIds: [window.lastSelectedId] });
+            
+            // Restore button highlighting
+            if (feature.geometry.type === 'Point') {
+                setActiveButton('btn-label'); 
+            }
+        }
+    }, 50); // 50ms is the "Magic Number" for Mapbox visual updates
+    
+    saveState();
+}
+
+window.rotateLabel = function(deg) { 
+    // Logic: Use current selection, fallback to sticky memory
+    var ids = draw.getSelectedIds();
+    var id = ids.length > 0 ? ids[0] : window.lastSelectedId;
+
+    if (id) { 
+        var f = draw.get(id); 
+        if (f) {
+            var newRot = (f.properties.rotation || 0) + deg;
+            f.properties.rotation = newRot;
+            updateAndSelect(f);
+        }
     } 
 }
 
-window.rotateLabel = function(deg) { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); draw.setFeatureProperty(ids[0], 'rotation', (f.properties.rotation || 0) + deg); saveState(); } }
-window.nudgeLabel = function(dx, dy) { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); var o = f.properties.offset || [0, -1.5]; draw.setFeatureProperty(ids[0], 'offset', [o[0] + dx/10, o[1] + dy/10]); saveState(); } }
-window.editLabelText = function() { var ids = draw.getSelectedIds(); if (ids.length) { var f = draw.get(ids[0]); var n = prompt("Edit label:", f.properties.name); if(n) { draw.setFeatureProperty(ids[0], 'name', n); saveState(); } } }
+window.nudgeLabel = function(dx, dy) { 
+    var ids = draw.getSelectedIds();
+    var id = ids.length > 0 ? ids[0] : window.lastSelectedId;
+
+    if (id) { 
+        var f = draw.get(id); 
+        if (f) {
+            var currentOffset = f.properties.offset || [0, -1.5];
+            f.properties.offset = [currentOffset[0] + dx/10, currentOffset[1] + dy/10];
+            updateAndSelect(f);
+        }
+    } 
+}
+
+window.editLabelText = function() { 
+    var ids = draw.getSelectedIds();
+    var id = ids.length > 0 ? ids[0] : window.lastSelectedId;
+
+    if (id) { 
+        var f = draw.get(id); 
+        if (f) {
+            var n = prompt("Edit label:", f.properties.name); 
+            if(n) { 
+                f.properties.name = n;
+                updateAndSelect(f);
+            } 
+        }
+    } 
+}
+
+// --- STANDARD LOGIC ---
+
+window.toggleLineSmoothing = function() { 
+    var id = window.lastSelectedId;
+    if (id) { 
+        var f = draw.get(id); 
+        if (f) {
+            draw.setFeatureProperty(id, 'isSmoothed', !(f.properties.isSmoothed !== false)); 
+            showRoadControls(true, draw.get(id)); 
+            updateVisuals(); 
+            saveState();
+        }
+    } 
+}
 
 window.smartDelete = function() {
     var pts = draw.getSelectedPoints();
-    if (pts.features.length > 0) draw.trash();
-    else { var ids = draw.getSelectedIds(); if (ids.length > 0) draw.delete(ids); else draw.trash(); }
+    var ids = draw.getSelectedIds();
+    
+    if (pts.features.length > 0) {
+        draw.trash();
+    } else if (ids.length > 0) {
+        draw.delete(ids);
+        window.lastSelectedId = null; // Clear memory
+        resetUI();
+    } else if (window.lastSelectedId) {
+        // Fallback delete using memory
+        draw.delete([window.lastSelectedId]);
+        window.lastSelectedId = null;
+        resetUI();
+    }
+    
     updateVisuals();
     saveState();
 }
 
-// --- UNDO / REDO SYSTEM ---
-window.saveState = function() {
-    // If we are in the past, cut off the future (create new timeline)
-    if (historyStep < historyStack.length - 1) {
-        historyStack = historyStack.slice(0, historyStep + 1);
-    }
-    
-    // Save snapshot
-    historyStack.push(JSON.stringify(draw.getAll()));
-    historyStep++;
-    
-    // Limit history to 50 steps to prevent memory crashes
-    if (historyStack.length > 50) { 
-        historyStack.shift(); 
-        historyStep--; 
-    }
-}
-
-window.undo = function() {
-    if (historyStep > 0) {
-        historyStep--;
-        draw.set(JSON.parse(historyStack[historyStep]));
-        updateVisuals();
-    } else {
-        console.log("Nothing to undo");
-    }
-}
-
-window.redo = function() {
-    if (historyStep < historyStack.length - 1) {
-        historyStep++;
-        draw.set(JSON.parse(historyStack[historyStep]));
-        updateVisuals();
-    } else {
-        console.log("Nothing to redo");
-    }
-}
-
-// --- EVENTS ---
-map.on('draw.selectionchange', function(e) {
-    var btnDelete = document.getElementById('btn-delete');
-    var selectedPoints = draw.getSelectedPoints();
-    
-    if (selectedPoints.features.length > 0) {
-        btnDelete.innerHTML = "<span>📍</span> Delete Point"; btnDelete.classList.add('point-mode');
-    } else if (e.features.length > 0) {
-        btnDelete.innerHTML = "<span>🗑️</span> Delete Road"; btnDelete.classList.remove('point-mode');
-    } else {
-        btnDelete.innerHTML = "<span>🗑️</span> Delete Selected"; btnDelete.classList.remove('point-mode');
-    }
-
-    if (e.features.length > 0) {
-        var f = e.features[0];
-        // If user selects an existing road, we should probably highlight the "Select" tool
-        // or just clear the drawing tool highlights
-        setActiveButton('btn-select'); 
-
-        if (f.geometry.type === 'LineString') {
-            document.getElementById('debug-info').innerText = "Points: " + f.geometry.coordinates.length;
-            showTextControls(false);
-            showRoadControls(true, f); 
-            var featureId = f.id;
-            setTimeout(() => { if(draw.getMode() === 'simple_select') draw.changeMode('direct_select', { featureId: featureId }); }, 50);
-        } else if (f.geometry.type === 'Point' && f.properties.isLabel) {
-            showTextControls(true); showRoadControls(false);
-        }
-    } else {
-        showTextControls(false); showRoadControls(false); document.getElementById('debug-info').innerText = "Points: 0";
-    }
-});
+// --- REST OF APP (Unchanged) ---
 
 function showTextControls(show) { document.getElementById('text-controls').style.display = show ? 'block' : 'none'; }
 function showRoadControls(show, feature) { 
@@ -181,6 +273,29 @@ function showRoadControls(show, feature) {
         var isSmoothed = feature.properties.isSmoothed !== false; 
         if (isSmoothed) { btn.className = "btn-mini btn-wide btn-straight"; btn.innerHTML = "📏 Make Straight"; } 
         else { btn.className = "btn-mini btn-wide btn-curve"; btn.innerHTML = "〰️ Make Smooth"; }
+    }
+}
+
+window.saveState = function() {
+    if (historyStep < historyStack.length - 1) historyStack = historyStack.slice(0, historyStep + 1);
+    historyStack.push(JSON.stringify(draw.getAll()));
+    historyStep++;
+    if (historyStack.length > 20) { historyStack.shift(); historyStep--; }
+}
+
+window.undo = function() {
+    if (historyStep > 0) {
+        historyStep--;
+        draw.set(JSON.parse(historyStack[historyStep]));
+        updateVisuals();
+    }
+}
+
+window.redo = function() {
+    if (historyStep < historyStack.length - 1) {
+        historyStep++;
+        draw.set(JSON.parse(historyStack[historyStep]));
+        updateVisuals();
     }
 }
 
@@ -210,9 +325,11 @@ map.on('draw.create', function(e) {
             });
             if (linkedId) { draw.setFeatureProperty(f.id, 'linkedRoadId', linkedId); draw.setFeatureProperty(f.id, 'linkedRatio', linkedRatio); }
             saveState();
+            // Select the new label immediately
+            window.lastSelectedId = f.id;
+            updateUI(f.id);
         } else { draw.delete(f.id); }
         isLabelMode = false;
-        // Reset button state
         setActiveButton('btn-select');
     } else if (f.geometry.type === 'LineString') {
         draw.setFeatureProperty(f.id, 'roadType', currentRoadType);
@@ -246,22 +363,8 @@ map.on('mouseup', function() { if (draw.getMode() === 'direct_select' || draw.ge
 map.on('draw.delete', function(){ updateVisuals(); saveState(); });
 
 document.addEventListener('keydown', function(e) { 
-    // 1. Undo (Ctrl + Z)
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { 
-        e.preventDefault();
-        undo(); 
-    }
-    
-    // 2. Redo (Ctrl + Y) OR (Ctrl + Shift + Z)
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { 
-        e.preventDefault();
-        redo(); 
-    }
-
-    // 3. Delete (Backspace or Delete key)
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-        smartDelete();
-    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { undo(); return; }
+    if (e.key === 'Delete' || e.key === 'Backspace') smartDelete(); 
 });
 
 window.updateVisuals = function() {
