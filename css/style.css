@@ -177,6 +177,62 @@ button:active { transform: scale(0.98); }
     justify-content: center !important;
 }
 
+/* --- COMPACT LAYOUT UTILS --- */
+
+/* Grid for 2-column buttons */
+.tool-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two equal columns */
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+/* Section Headers */
+.section-header {
+    font-size: 11px;
+    color: #95a5a6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 15px 0 5px 0;
+    font-weight: bold;
+    border-bottom: 1px solid #34495e;
+    padding-bottom: 2px;
+}
+
+/* Compact Button Style */
+.btn-tool {
+    width: 100%;
+    padding: 10px 5px; /* Tighter padding */
+    font-size: 13px;
+    display: flex;
+    justify-content: center; /* Center content */
+    gap: 6px;
+}
+
+/* Make icons slightly smaller to fit */
+.btn-tool span {
+    font-size: 16px;
+}
+
+/* Adjust the Toggle Container to be compact */
+.toggle-group {
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    justify-content: space-around; /* Spread them out */
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
 /* BUTTON SIZES */
 .btn-mini { 
     width: 34px; 
