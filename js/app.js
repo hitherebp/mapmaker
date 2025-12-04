@@ -504,3 +504,66 @@ function loadMap(input) {
     document.getElementById('map-title').value = cleanName; document.title = cleanName;
     var reader = new FileReader(); reader.onload = function(e) { try { var json = JSON.parse(e.target.result); draw.deleteAll(); draw.add(json); updateVisuals(); saveState(); var bounds = new maplibregl.LngLatBounds(); json.features.forEach(f => { if(f.geometry.type === 'Point') bounds.extend(f.geometry.coordinates); else f.geometry.coordinates.forEach(c => bounds.extend(c)); }); if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 50 }); } catch (error) { alert("Error: " + error); } }; reader.readAsText(file); input.value = '';
 }
+
+// --- SIDEBAR RESIZER ---
+(function() {
+    var sidebar = document.getElementById('sidebar');
+    var resizer = document.getElementById('resizer');
+    var isResizing = false;
+
+    // Mouse Events
+    resizer.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        resizer.classList.add('resizing');
+        document.body.style.cursor = 'col-resize'; // Force cursor
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+        var newWidth = e.clientX;
+        // Constraints
+        if (newWidth < 180) newWidth = 180;
+        if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8;
+        
+        sidebar.style.flex = `0 0 ${newWidth}px`;
+        sidebar.style.width = `${newWidth}px`;
+        
+        // Force Map Resize so it doesn't skew
+        if (window.map) window.map.resize();
+    });
+
+    document.addEventListener('mouseup', function() {
+        if (isResizing) {
+            isResizing = false;
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+        }
+    });
+
+    // Touch Events (For iPad/Phone)
+    resizer.addEventListener('touchstart', function(e) {
+        isResizing = true;
+        resizer.classList.add('resizing');
+        e.preventDefault(); // Stop scrolling while resizing
+    });
+
+    document.addEventListener('touchmove', function(e) {
+        if (!isResizing) return;
+        var touch = e.touches[0];
+        var newWidth = touch.clientX;
+        
+        if (newWidth < 180) newWidth = 180;
+        if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8;
+        
+        sidebar.style.flex = `0 0 ${newWidth}px`;
+        sidebar.style.width = `${newWidth}px`;
+        
+        if (window.map) window.map.resize();
+    });
+
+    document.addEventListener('touchend', function() {
+        isResizing = false;
+        resizer.classList.remove('resizing');
+    });
+})();

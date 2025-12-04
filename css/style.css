@@ -282,3 +282,29 @@ button:active { transform: scale(0.98); }
 
 .toggle-container { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; margin-top: 10px; }
 #debug-info { margin-top: 10px; font-size: 11px; color: #7f8c8d; text-align: center;}
+
+/* RESIZER HANDLE */
+#resizer {
+    width: 15px; /* Wide enough for touch */
+    cursor: col-resize; /* Shows <-> cursor */
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2500;
+    background: transparent;
+    transition: background 0.2s;
+}
+
+/* Visual feedback when hovering or dragging */
+#resizer:hover, #resizer.resizing {
+    background: rgba(52, 152, 219, 0.5); /* Blue highlight */
+    border-right: 2px solid #3498db;
+}
+
+/* Ensure sidebar allows positioning the handle */
+#sidebar {
+    position: relative; /* Needed for absolute positioning of #resizer */
+    min-width: 180px;   /* Don't let it get too small */
+    max-width: 80vw;    /* Don't let it take over the whole screen */
+}
