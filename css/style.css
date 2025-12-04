@@ -294,6 +294,8 @@ button:active { transform: scale(0.98); }
     z-index: 2500;
     background: transparent;
     transition: background 0.2s;
+    /* ANDROID CHROME FIX: Disables browser scrolling/gestures on the handle */
+    touch-action: none; 
 }
 
 /* Visual feedback when hovering or dragging */

@@ -511,25 +511,22 @@ function loadMap(input) {
     var resizer = document.getElementById('resizer');
     var isResizing = false;
 
-    // Mouse Events
+    // Mouse Events (Desktop)
     resizer.addEventListener('mousedown', function(e) {
         isResizing = true;
         resizer.classList.add('resizing');
-        document.body.style.cursor = 'col-resize'; // Force cursor
+        document.body.style.cursor = 'col-resize'; 
         e.preventDefault();
     });
 
     document.addEventListener('mousemove', function(e) {
         if (!isResizing) return;
         var newWidth = e.clientX;
-        // Constraints
         if (newWidth < 180) newWidth = 180;
         if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8;
         
         sidebar.style.flex = `0 0 ${newWidth}px`;
         sidebar.style.width = `${newWidth}px`;
-        
-        // Force Map Resize so it doesn't skew
         if (window.map) window.map.resize();
     });
 
@@ -541,12 +538,13 @@ function loadMap(input) {
         }
     });
 
-    // Touch Events (For iPad/Phone)
+    // Touch Events (Mobile)
+    // FIX: Added { passive: false } to allow preventing default scroll behavior
     resizer.addEventListener('touchstart', function(e) {
         isResizing = true;
         resizer.classList.add('resizing');
-        e.preventDefault(); // Stop scrolling while resizing
-    });
+        e.preventDefault(); 
+    }, { passive: false });
 
     document.addEventListener('touchmove', function(e) {
         if (!isResizing) return;
@@ -560,7 +558,10 @@ function loadMap(input) {
         sidebar.style.width = `${newWidth}px`;
         
         if (window.map) window.map.resize();
-    });
+        
+        // Prevent page scrolling while dragging sidebar
+        e.preventDefault();
+    }, { passive: false });
 
     document.addEventListener('touchend', function() {
         isResizing = false;
